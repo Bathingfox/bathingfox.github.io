@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.5.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.5.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.5.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.5.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="重拾Android从研究生阶段开始接触Android，主要研究的是Android平台移动安全方面的问题，学艺不精，到毕业也只落得个马马虎虎。上班后，工作内容与Android毫无关系，之前马马虎虎所积累的一点知识也快遗忘殆尽，再加上Android现在的迭代和发展十分迅速，我实在不想落得个最后别人问起我这方面的问题，却答不上来的下场。 现在重新拾起Android，一是补偿一件我本该做好的事情，二是为了">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Android可执行文件分析">
+<meta property="og:url" content="http://yoursite.com/2018/11/29/Android可执行文件分析/index.html">
+<meta property="og:site_name" content="爱洗澡的狐狸">
+<meta property="og:description" content="重拾Android从研究生阶段开始接触Android，主要研究的是Android平台移动安全方面的问题，学艺不精，到毕业也只落得个马马虎虎。上班后，工作内容与Android毫无关系，之前马马虎虎所积累的一点知识也快遗忘殆尽，再加上Android现在的迭代和发展十分迅速，我实在不想落得个最后别人问起我这方面的问题，却答不上来的下场。 现在重新拾起Android，一是补偿一件我本该做好的事情，二是为了">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/dex_struct.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/encoded_value.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/encoded_value_format.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/encoded_array_format.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/encoded_annotation_format.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/op0x70.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/typecode.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/35cformat.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/35cparse.png">
+<meta property="og:image" content="http://yoursite.com/uploads/Android/dex/op0x0e.png">
+<meta property="og:updated_time" content="2018-11-29T14:21:37.129Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Android可执行文件分析">
+<meta name="twitter:description" content="重拾Android从研究生阶段开始接触Android，主要研究的是Android平台移动安全方面的问题，学艺不精，到毕业也只落得个马马虎虎。上班后，工作内容与Android毫无关系，之前马马虎虎所积累的一点知识也快遗忘殆尽，再加上Android现在的迭代和发展十分迅速，我实在不想落得个最后别人问起我这方面的问题，却答不上来的下场。 现在重新拾起Android，一是补偿一件我本该做好的事情，二是为了">
+<meta name="twitter:image" content="http://yoursite.com/uploads/Android/dex/dex_struct.png">
+
+
+  
+
+
+  <link rel="alternate" href="/atom.xml" title="爱洗澡的狐狸" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/29/Android可执行文件分析/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Android可执行文件分析 | 爱洗澡的狐狸</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">爱洗澡的狐狸</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/29/Android可执行文件分析/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Bathingfox">
+      <meta itemprop="description" content="我就是我，是颜色不一样的吃货！！！">
+      <meta itemprop="image" content="/images/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爱洗澡的狐狸">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Android可执行文件分析
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2018-11-29 21:52:25 / Modified: 22:21:37" itemprop="dateCreated datePublished" datetime="2018-11-29T21:52:25+08:00">2018-11-29</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="重拾Android"><a href="#重拾Android" class="headerlink" title="重拾Android"></a>重拾Android</h2><p>从研究生阶段开始接触Android，主要研究的是Android平台移动安全方面的问题，学艺不精，到毕业也只落得个马马虎虎。上班后，工作内容与Android毫无关系，之前马马虎虎所积累的一点知识也快遗忘殆尽，再加上Android现在的迭代和发展十分迅速，我实在不想落得个最后别人问起我这方面的问题，却答不上来的下场。</p>
+<p>现在重新拾起Android，一是补偿一件我本该做好的事情，二是为了能够追赶上技术的发展，三是为了能够增长自己的知识面，到底还是想研究安全相关的问题。我的学习起点从Android的可执行文件DEX开始，学习它的结构，最终的目的是为了能够自己写一个DEX文件解析器，使用Python实现。<br><a id="more"></a></p>
+<h2 id="DEX文件"><a href="#DEX文件" class="headerlink" title="DEX文件"></a>DEX文件</h2><p>DEX文件是Android系统的可执行文件，早期专门设计用来在Dalvik虚拟机环境下执行。</p>
+<h3 id="DEX文件数据类型"><a href="#DEX文件数据类型" class="headerlink" title="DEX文件数据类型"></a>DEX文件数据类型</h3><p>首先了解一下DEX文件中用到的数据类型。如下表所示：</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>u1</td>
+<td>等同于uint8_t，表示1字节的无符号数</td>
+</tr>
+<tr>
+<td>u2</td>
+<td>等同于uint16_t，表示2字节的无符号数</td>
+</tr>
+<tr>
+<td>u4</td>
+<td>等同于uint32_t，表示4字节的无符号数</td>
+</tr>
+<tr>
+<td>u8</td>
+<td>等同于uint64_t，表示8字节的无符号数</td>
+</tr>
+<tr>
+<td>sleb128</td>
+<td>有符号LEB128，可变长度1~5字节</td>
+</tr>
+<tr>
+<td>uleb128</td>
+<td>无符号LEB128，可变长度1~5字节</td>
+</tr>
+<tr>
+<td>uleb128p1</td>
+<td>无符号LEB128值加1，可变长度1~5字节</td>
+</tr>
+</tbody>
+</table>
+<p>u1~u8类型都无需多解释，LEB128数据类型是dex文件所特有的。每个LEB128由1~5个字节组成，所有的字节组合在一起表示一个32位数据，每个字节只有7位有效，如果第1个字节的最高位为1，表示LEB128需要使用到第2个字节，如果第2个字节的最高位为1，表示会用到第3个字节，以此类推，直到最后的字节最高位为0，不过，LEB128最多只会使用5个字节，如果读取到第5个字节，最高位是1，表示该dex无效。</p>
+<p>在Android系统源码目录dalvik/libdex/Leb128.h中有LEB128的实现。读取无符号LEB128（uleb128）数据的代码如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">DEX_INLINE <span class="keyword">int</span> <span class="title">readUnsignedLeb128</span><span class="params">(<span class="keyword">const</span> u1** pStream)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> u1* ptr = *pStream;</span><br><span class="line">    <span class="keyword">int</span> result = *(ptr++);</span><br><span class="line">    <span class="keyword">if</span> (result &gt; <span class="number">0x7f</span>) &#123;</span><br><span class="line">        <span class="keyword">int</span> cur = *(ptr++);</span><br><span class="line">        result = (result &amp; <span class="number">0x7f</span>) | ((cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">7</span>);</span><br><span class="line">        <span class="keyword">if</span> (cur &gt; <span class="number">0x7f</span>) &#123;</span><br><span class="line">            cur = *(ptr++);</span><br><span class="line">            result |= (cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">14</span>;</span><br><span class="line">            <span class="keyword">if</span> (cur &gt; <span class="number">0x7f</span>) &#123;</span><br><span class="line">                cur = *(ptr++);</span><br><span class="line">                result |= (cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">21</span>;</span><br><span class="line">                <span class="keyword">if</span> (cur &gt; <span class="number">0x7f</span>) &#123;</span><br><span class="line">                    cur = *(ptr++);</span><br><span class="line">                    result |= cur &lt;&lt; <span class="number">28</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    *pStream = ptr;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我们可以通过Python来重新改写一下该函数：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_sleb128</span><span class="params">(content)</span>:</span></span><br><span class="line">	value = <span class="number">0</span></span><br><span class="line">	</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> xrange(<span class="number">0</span>, <span class="number">5</span>):</span><br><span class="line">		t = ord(content[i]) &amp; <span class="number">0x7f</span></span><br><span class="line">		value = t &lt;&lt; (i * <span class="number">7</span>) | value</span><br><span class="line">		<span class="keyword">if</span> (ord(content[i]) &amp; <span class="number">0x80</span>) != <span class="number">0x80</span>:</span><br><span class="line">			<span class="keyword">break</span></span><br><span class="line">	</span><br><span class="line">	<span class="keyword">if</span> i == <span class="number">4</span> <span class="keyword">and</span> (t &amp; <span class="number">0xf0</span>) != <span class="number">0</span>:</span><br><span class="line">		<span class="keyword">print</span> <span class="string">"Invalid LEB128 data!"</span></span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">	</span><br><span class="line">	retur i+<span class="number">1</span>, value</span><br></pre></td></tr></table></figure></p>
+<p>读取有符号LEB128（sleb128）数据的方法与无符号数据相同，只是对最后一个字节的最高有效位进行了符号扩展。读取有符号LEB128数据的代码如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">DEX_INLINE <span class="keyword">int</span> <span class="title">readSignedLeb128</span><span class="params">(<span class="keyword">const</span> u1** pStream)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> u1* ptr = *pStream;</span><br><span class="line">    <span class="keyword">int</span> result = *(ptr++);</span><br><span class="line">    <span class="keyword">if</span> (result &lt;= <span class="number">0x7f</span>) &#123;</span><br><span class="line">        result = (result &lt;&lt; <span class="number">25</span>) &gt;&gt; <span class="number">25</span>;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="keyword">int</span> cur = *(ptr++);</span><br><span class="line">        result = (result &amp; <span class="number">0x7f</span>) | ((cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">7</span>);</span><br><span class="line">        <span class="keyword">if</span> (cur &lt;= <span class="number">0x7f</span>) &#123;</span><br><span class="line">            result = (result &lt;&lt; <span class="number">18</span>) &gt;&gt; <span class="number">18</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            cur = *(ptr++);</span><br><span class="line">            result |= (cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">14</span>;</span><br><span class="line">            <span class="keyword">if</span> (cur &lt;= <span class="number">0x7f</span>) &#123;</span><br><span class="line">                result = (result &lt;&lt; <span class="number">11</span>) &gt;&gt; <span class="number">11</span>;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                cur = *(ptr++);</span><br><span class="line">                result |= (cur &amp; <span class="number">0x7f</span>) &lt;&lt; <span class="number">21</span>;</span><br><span class="line">                <span class="keyword">if</span> (cur &lt;= <span class="number">0x7f</span>) &#123;</span><br><span class="line">                    result = (result &lt;&lt; <span class="number">4</span>) &gt;&gt; <span class="number">4</span>;</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    cur = *(ptr++);</span><br><span class="line">                    result |= cur &lt;&lt; <span class="number">28</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    *pStream = ptr;</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>同样，我们也用Python重新实现一下该函数：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_sleb128</span><span class="params">(content)</span>:</span></span><br><span class="line">	value = <span class="number">0</span></span><br><span class="line">	signmask = [<span class="number">0x40</span>, <span class="number">0x40</span>, <span class="number">0x40</span>, <span class="number">0x40</span>, <span class="number">0x08</span>]</span><br><span class="line">	mask = [<span class="number">0xffffff80</span>,<span class="number">0xffffc000</span>,<span class="number">0xffe00000</span>,<span class="number">0xf0000000</span>,<span class="number">0</span>]</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">for</span> i <span class="keyword">in</span> xrange(<span class="number">0</span>, <span class="number">5</span>):</span><br><span class="line">		t = ord(content[i]) &amp; <span class="number">0x7f</span></span><br><span class="line">		value = t &lt;&lt; (i * <span class="number">7</span>) | value</span><br><span class="line">		<span class="keyword">if</span> (ord(content[i]) &amp; <span class="number">0x80</span>) != <span class="number">0x80</span>:</span><br><span class="line">			<span class="comment"># If encouter the last byte, check the sign bit</span></span><br><span class="line">			<span class="comment"># and expand the sign</span></span><br><span class="line">			<span class="keyword">if</span> signmask[i] &amp; tmp:</span><br><span class="line">				value |= mask[i]</span><br><span class="line">        		<span class="keyword">break</span></span><br><span class="line">	</span><br><span class="line">	<span class="keyword">if</span> i == <span class="number">4</span> <span class="keyword">and</span> (t &amp; <span class="number">0xf0</span>) != <span class="number">0</span>:</span><br><span class="line">		<span class="keyword">print</span> <span class="string">"Invalid LEB128 data!"</span></span><br><span class="line">		<span class="keyword">return</span> <span class="number">-1</span></span><br><span class="line">	</span><br><span class="line">	<span class="comment"># Store the result as an unsigned integer</span></span><br><span class="line">	buffer = struct.pack(<span class="string">"I"</span>,value)</span><br><span class="line">	<span class="comment"># Extract the stored value as a signed integer</span></span><br><span class="line">   	value, = struct.unpack(<span class="string">"i"</span>,buffer)</span><br><span class="line">   	<span class="keyword">return</span> i+<span class="number">1</span>, value</span><br></pre></td></tr></table></figure></p>
+<p>uleb128p1类型很简单，它的值为uleb128的值加1。所以可以复用读取uleb128数据的代码，如下：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_uleb128p1</span><span class="params">(content)</span>:</span></span><br><span class="line">    n,value = get_uleb128(content)</span><br><span class="line">    value += <span class="number">1</span></span><br><span class="line">    <span class="keyword">return</span> n,value</span><br></pre></td></tr></table></figure></p>
+<h3 id="DEX文件整体结构"><a href="#DEX文件整体结构" class="headerlink" title="DEX文件整体结构"></a>DEX文件整体结构</h3><p>DEX文件的整体结构相对来说比较简单，由多个部分组成，如下图所示：</p>
+<p><center><br>  <img src="/uploads/Android/dex/dex_struct.png" width="40%" height="60%"><br></center><br>Dex Header为文件头，指定了dex文件的一些属性，并记录了其他6个部分在dex文件中的物理便宜。<strong>string_ids到class_def结构可以理解为“索引结构区”，真实的数据存放在data数据区</strong>。最后其实还有一个link_data，为静态链接数据区，目前这个部分始终为空。</p>
+<p>未经过优化的dex文件结构表示如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexFile</span> &#123;</span></span><br><span class="line">	DexHeader		Header；</span><br><span class="line">	DexStringId	StringIds[stringIdsSize];</span><br><span class="line">	DexTypeId		TypeIds[typeIdsSize];</span><br><span class="line">	DexProtoId	ProtoIds[protoIdSize];</span><br><span class="line">	DexFieldId	FieldIds[fieldIdsSize];</span><br><span class="line">	DexMethodId	MethodIds[methodIdSize];</span><br><span class="line">	DexClassDef	ClassDefs[classDefsSize];</span><br><span class="line">	DexData		Data[];</span><br><span class="line">	DexLink		LinkData;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这是一种经过简化的表示方式，与系统源码dalvik/libdex/DexFile.h文件中的声明并不一致，后者定义的是DexFile结构为dex文件被映射到内存中的结构，保存的是各个结构的指针，还包括优化的头部DexOptHeader和尾部附加数据。DexHeader结构占用70个字节，其声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexHeader</span> &#123;</span></span><br><span class="line">    u1  magic[<span class="number">8</span>];           <span class="comment">/* includes version number */</span></span><br><span class="line">    u4  checksum;           <span class="comment">/* adler32 checksum */</span></span><br><span class="line">    u1  signature[kSHA1DigestLen]; <span class="comment">/* SHA-1 hash */</span></span><br><span class="line">    u4  fileSize;           <span class="comment">/* length of entire file */</span></span><br><span class="line">    u4  headerSize;         <span class="comment">/* offset to start of next section */</span></span><br><span class="line">    u4  endianTag;</span><br><span class="line">    u4  linkSize;</span><br><span class="line">    u4  linkOff;</span><br><span class="line">    u4  mapOff;</span><br><span class="line">    u4  stringIdsSize;</span><br><span class="line">    u4  stringIdsOff;</span><br><span class="line">    u4  typeIdsSize;</span><br><span class="line">    u4  typeIdsOff;</span><br><span class="line">    u4  protoIdsSize;</span><br><span class="line">    u4  protoIdsOff;</span><br><span class="line">    u4  fieldIdsSize;</span><br><span class="line">    u4  fieldIdsOff;</span><br><span class="line">    u4  methodIdsSize;</span><br><span class="line">    u4  methodIdsOff;</span><br><span class="line">    u4  classDefsSize;</span><br><span class="line">    u4  classDefsOff;</span><br><span class="line">    u4  dataSize;</span><br><span class="line">    u4  dataOff;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<ul>
+<li>magic字段标识该文件是一个dex文件，至少到Android4.4，这个值固定为“64 65 78 0A 30 33 35”，转换为ASCII编码的字符串为“dex.035”。</li>
+<li>checksum字段是dex文件的校验和，用来判断该dex是否有损害或被篡改。</li>
+<li>signature字段用来识别最优化之前的dex文件，它的长度为20个字节，可以用来验证dex文件的完整性，毕竟checksum太短，重复的可能性比较大，有些破坏文件完整性的情况发现不了。</li>
+<li>fileSize字段记录了包括DexHeader在内的整个dex文件大小。</li>
+<li>headerSize记录了DexHeader结构本身所占用的字节数，其值为0x70。</li>
+<li>endianTag字段指定dex运行环境的CPU字节序，预设值ENDIAN_CONSTANT为0x12345678，表示默认采用小端字节序。</li>
+<li>linkSize和linkOff分别表示静态链接段的大笑和物理偏移，一般它们都为0。</li>
+<li>mapOff是DexMapList的文件偏移。</li>
+<li>后面的字段分别表示DexStringId、DexTypeId、DexProtoId、DexFieldId、DexMethodId、DexClassDef以及数据段的大小和文件偏移。</li>
+</ul>
+<p>对于DexHeader的解析是比较简单的，直接按照字段的大小，解析出来就可以。</p>
+<p>DexHeader结构后面接着的数据可以分为“索引结构区”与“数据区”，前者所包含的各个数据结构的偏移地址都是从DexHeader结构的stringIdsOff~classDefOff字段的值来指定的，它们又并非是真正的类数据，而是指向data数据区的偏移值或数据结构的索引。</p>
+<h3 id="DEX文件数据结构"><a href="#DEX文件数据结构" class="headerlink" title="DEX文件数据结构"></a>DEX文件数据结构</h3><p>接下来按顺序来看DexHeader后面紧接着的“索引结构区”的数据结构。</p>
+<h4 id="DexMapList"><a href="#DexMapList" class="headerlink" title="DexMapList"></a>DexMapList</h4><p>在DexHeader中mapOff字段表示的DexMapList的文件偏移，它的声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexMapList</span> &#123;</span></span><br><span class="line">	u4 size;		<span class="comment">/* DexMapItem的个数 */</span></span><br><span class="line">	DexMapItem <span class="built_in">list</span>[<span class="number">1</span>];	<span class="comment">/* DexMapItem结构 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>size表示接下来有多少个DexMapItem结构，DexMapItem的结构声明如下。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexMapItem</span> &#123;</span></span><br><span class="line">	u2 type;	<span class="comment">/* kDexType开头的类型 */</span></span><br><span class="line">	u2 unused;	<span class="comment">/* 未使用，用于字节对齐 */</span></span><br><span class="line">	u4 size;	<span class="comment">/* 指定类型的个数 */</span></span><br><span class="line">	u4 offset;	<span class="comment">/* 指定类型数据的文件偏移 */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>type为一个枚举常量，如下所示，通过类型名称很容易判断它的具体类型，就不再赘述。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">enum</span> &#123;</span><br><span class="line">    kDexTypeHeaderItem               = <span class="number">0x0000</span>,</span><br><span class="line">    kDexTypeStringIdItem             = <span class="number">0x0001</span>,</span><br><span class="line">    kDexTypeTypeIdItem               = <span class="number">0x0002</span>,</span><br><span class="line">    kDexTypeProtoIdItem              = <span class="number">0x0003</span>,</span><br><span class="line">    kDexTypeFieldIdItem              = <span class="number">0x0004</span>,</span><br><span class="line">    kDexTypeMethodIdItem             = <span class="number">0x0005</span>,</span><br><span class="line">    kDexTypeClassDefItem             = <span class="number">0x0006</span>,</span><br><span class="line">    kDexTypeMapList                  = <span class="number">0x1000</span>,</span><br><span class="line">    kDexTypeTypeList                 = <span class="number">0x1001</span>,</span><br><span class="line">    kDexTypeAnnotationSetRefList     = <span class="number">0x1002</span>,</span><br><span class="line">    kDexTypeAnnotationSetItem        = <span class="number">0x1003</span>,</span><br><span class="line">    kDexTypeClassDataItem            = <span class="number">0x2000</span>,</span><br><span class="line">    kDexTypeCodeItem                 = <span class="number">0x2001</span>,</span><br><span class="line">    kDexTypeStringDataItem           = <span class="number">0x2002</span>,</span><br><span class="line">    kDexTypeDebugInfoItem            = <span class="number">0x2003</span>,</span><br><span class="line">    kDexTypeAnnotationItem           = <span class="number">0x2004</span>,</span><br><span class="line">    kDexTypeEncodedArrayItem         = <span class="number">0x2005</span>,</span><br><span class="line">    kDexTypeAnnotationsDirectoryItem = <span class="number">0x2006</span>,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>size指定了该类型的个数，每个类型在dex文件中都是连续存放的；offset表示该类型在dex文件中起始的偏移地址。这一部分其实还算是个文件的整体描述，每个类型所对应的数据结构，我们可以在后面的数据结构中直接获得，所以这一部分在我们的解析器中可以不用解析。</p>
+<h4 id="DexStringId"><a href="#DexStringId" class="headerlink" title="DexStringId"></a>DexStringId</h4><p>该结构的声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexStringId</span> &#123;</span></span><br><span class="line">    u4 stringDataOff;      <span class="comment">/* file offset to string_data_item */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>stringDataOff字段直接指向字符串数据，之前DexHeader中的stringIdsSize已经指定了字符串数据的个数，所以根据这两个值，就可以解析出所有的字符串。不过这里需要注意一点，dex文件中字符串并非普通的ASCII字符串，而是由MUTF-8（Modified utf-8）编码表示的。这种编码方式与传统的utf-8很相似，但是有如下区别：</p>
+<ul>
+<li>MUTF-8使用1~3个字节编码长度；</li>
+<li>大于16位的Unicode编码U+10000~U+10ffff使用3字节来编码；</li>
+<li>U+0000采用2字节来编码；</li>
+<li>采用类似于C语言中的空字符NUL作为字符串的结尾。</li>
+</ul>
+<p>MUTF-8字符串的头部存放的是由uleb128编码的字符的个数。比如字符序列“02 e4 bd a0 e5 a5 bd 00”头部的02即表示字符串中有两个字符，“e4 bd a0”是UTF-8编码字符“你”，“e5 a5 bd”是UTF-8编码字符“好”，最后的“00”是空字符，表示字符串结束。字符的个数并不会算上空字符，因为它并不重要。</p>
+<p>现在考虑如何解析整个字符串表，stringIdsSize已经指定了字符串的个数，而所有的DexStringId结构体又是连续存放的，所以我们可以根据字符串的个数逐个找到每个字符串的偏移值，然后根据它的编码方式来得到对应的字符串。代码如下：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_string_table</span><span class="params">(self)</span>:</span></span><br><span class="line">    string_table = []</span><br><span class="line">    t_offset = self.m_stringIdsOff</span><br><span class="line">    <span class="keyword">if</span> self.m_stringIdsSize &gt; <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> xrange(<span class="number">0</span>, self.m_stringIdsSize):</span><br><span class="line">            offset, = struct.unpack_from(<span class="string">"I"</span>, self.m_content, t_offset + i * <span class="number">4</span>)</span><br><span class="line">            <span class="keyword">if</span> i == <span class="number">0</span>:</span><br><span class="line">                start = offset <span class="comment"># baseAddr</span></span><br><span class="line">            <span class="keyword">else</span>:</span><br><span class="line">                skip, length = get_uleb128(self.m_content[start:start+<span class="number">5</span>])</span><br><span class="line">                string_table.append(self.m_content[start+skip:offset<span class="number">-1</span>])</span><br><span class="line">                start = offset <span class="comment"># keep baseAddr</span></span><br><span class="line">        <span class="comment"># Extract the last string</span></span><br><span class="line">        <span class="keyword">for</span> i <span class="keyword">in</span> xrange(start, len(self.m_content)):</span><br><span class="line">            <span class="keyword">if</span> self.m_content[i] == chr(<span class="number">0</span>):</span><br><span class="line">                string_table.append(self.m_content[start+<span class="number">1</span>:i])</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">    <span class="keyword">return</span> string_table</span><br></pre></td></tr></table></figure></p>
+<h4 id="DexTypeId"><a href="#DexTypeId" class="headerlink" title="DexTypeId"></a>DexTypeId</h4><p>DexType是表示具体类的类型的，它的声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexTypeId</span> &#123;</span></span><br><span class="line">    u4  descriptorIdx;      <span class="comment">/* index into stringIds list for type descriptor */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>字段descriptorIdx指向的是DexStringId列表的索引，对应的字符串就是具体类的类型名称。所有类型名称的个数为typeIdsSzie，而第一个DexTypeId结构体的偏移值为typeIdsOff。所以，如果需要获取某个类的类型名称，可以直接通过对应的字符串表索引值来获取。</p>
+<h4 id="DexProtoId"><a href="#DexProtoId" class="headerlink" title="DexProtoId"></a>DexProtoId</h4><p>DexHeader中的protoIdsSize和protoIdsOff两个字段指示的结构体为DexProtoId，这是一个方法声明的结构体，声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexProtoId</span> &#123;</span></span><br><span class="line">    u4  shortyIdx;          <span class="comment">/* index into stringIds for shorty descriptor */</span></span><br><span class="line">    u4  returnTypeIdx;      <span class="comment">/* index into typeIds list for return type */</span></span><br><span class="line">    u4  parametersOff;      <span class="comment">/* file offset to type_list for parameter types */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>其中，shortyIdx是方法声明字符串的索引值，returnTypeIdx是方法返回值的类型字符串索引，parametersOff指向的是一个DexTypeList结构体，存放了方法的参数列表。</p>
+<p>DexTypeList的声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexTypeList</span> &#123;</span></span><br><span class="line">    u4  size;               <span class="comment">/* #of entries in list */</span></span><br><span class="line">    DexTypeItem <span class="built_in">list</span>[<span class="number">1</span>];    <span class="comment">/* entries */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>size表示参数的个数，list中保存的是具体的参数字符串索引。DexTypeItem结构体的声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexTypeItem</span> &#123;</span></span><br><span class="line">    u2  typeIdx;            <span class="comment">/* index into typeIds */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>typeIdx指向的是DexTypeId的索引。这样也就能间接获取到方法中所有参数的名称。</p>
+<h4 id="DexFieldId"><a href="#DexFieldId" class="headerlink" title="DexFieldId"></a>DexFieldId</h4><p>DexHeader中的fieldIdsSize和fieldIdsOff两个字段指示的结构体是DexFieldId，其声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexFieldId</span> &#123;</span></span><br><span class="line">    u2  classIdx;           <span class="comment">/* index into typeIds list for defining class */</span></span><br><span class="line">    u2  typeIdx;            <span class="comment">/* index into typeIds for field type */</span></span><br><span class="line">    u4  nameIdx;            <span class="comment">/* index into stringIds for field name */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>其中的数据全是索引值，指明了字段所在的类、类型和字段名。classIdx指向的是一个DexTypeId结构体，表示的是类名，typeIdx也指向的是一个DexTypeId结构体，表示的是类型，nameIdx是字符串表中的索引，是字段名称。</p>
+<h4 id="DexMethodId"><a href="#DexMethodId" class="headerlink" title="DexMethodId"></a>DexMethodId</h4><p>DexHeader中的methodIdsSize和methodIdsOff两个字段指示的结构体是DexMethodId，其声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexMethodId</span> &#123;</span></span><br><span class="line">    u2  classIdx;           <span class="comment">/* index into typeIds list for defining class */</span></span><br><span class="line">    u2  protoIdx;           <span class="comment">/* index into protoIds for method prototype */</span></span><br><span class="line">    u4  nameIdx;            <span class="comment">/* index into stringIds for method name */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>其中的数据也全是索引值，指明了方法所在的类、方法的声明以及方法名。</p>
+<h4 id="DexClassDef"><a href="#DexClassDef" class="headerlink" title="DexClassDef"></a>DexClassDef</h4><p>DexHeader中的classDefsSize和classDefsOff两个字段指示的结构体是DexClassDef，其声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexClassDef</span> &#123;</span></span><br><span class="line">    u4  classIdx;           <span class="comment">/* index into typeIds for this class */</span></span><br><span class="line">    u4  accessFlags;</span><br><span class="line">    u4  superclassIdx;      <span class="comment">/* index into typeIds for superclass */</span></span><br><span class="line">    u4  interfacesOff;      <span class="comment">/* file offset to DexTypeList */</span></span><br><span class="line">    u4  sourceFileIdx;      <span class="comment">/* index into stringIds for source file name */</span></span><br><span class="line">    u4  annotationsOff;     <span class="comment">/* file offset to annotations_directory_item */</span></span><br><span class="line">    u4  classDataOff;       <span class="comment">/* file offset to class_data_item */</span></span><br><span class="line">    u4  staticValuesOff;    <span class="comment">/* file offset to DexEncodedArray */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>这个结构体是类定义的有关数据，classIdx指向DexTypeId列表的索引，表明类的类型；accessFlags是访问标志，它是以ACC_开头的一个枚举值；superclassIdx指向DexTypeId列表的索引，表明父类的类型；如果类中含有接口声明或实现，interfacesOff会指向一个DexTypeList结构，否则为0；sourceFieldIdx表示字符串索引值，表示类所在的源文件名称；annotionsOff字段指向DexAnnotationsDirectoryItem结构，根据类型不同还有注解类、注解方法、注解字段与注解参数，如果类中没有注解，这里的值为0；classDataOff字段，指向DexClassData结构的偏移，它是类的数据部分；staticValuesOff字段指向DexEncodedArray结构，记录了类中的静态数据。</p>
+<p>这里展开看一下DexClassData结构的声明，如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexClassData</span> &#123;</span></span><br><span class="line">    DexClassDataHeader header;</span><br><span class="line">    DexField*          staticFields;</span><br><span class="line">    DexField*          instanceFields;</span><br><span class="line">    DexMethod*         directMethods;</span><br><span class="line">    DexMethod*         virtualMethods;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>header字段指定字段与方法的个数；staticFields指向静态字段，实际指向DexField结构；instanceFields指向实例字段，实际指向DexField结构；directMethod指向直接方法，实际指向DexMethod结构；virtualMethod指向虚方法，实际指向DexMethod结构。</p>
+<p>看看DexClassDataHeader结构的声明：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexClassDataHeader</span> &#123;</span></span><br><span class="line">    u4 staticFieldsSize; 	<span class="comment">/* 静态字段个数 */</span></span><br><span class="line">    u4 instanceFieldsSize; 	<span class="comment">/* 实例字段个数 */</span></span><br><span class="line">    u4 directMethodsSize; 	<span class="comment">/* 直接方法个数 */</span></span><br><span class="line">    u4 virtualMethodsSize; 	<span class="comment">/* 虚方法个数 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>DexClassDataHeader和DexClassData一样都是在“DexClass.h”文件中声明的，该文件中所有结构的u4类型的字段实际上都是uleb128类型的。</p>
+<p>DexField结构描述了字段的类型和访问标志，它的结构声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexField</span> &#123;</span></span><br><span class="line">    u4 fieldIdx;    <span class="comment">/* index to a field_id_item */</span></span><br><span class="line">    u4 accessFlags;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>fieldIdx指向的是DexFieldId的索引。</p>
+<p>DexMethod结构描述方法的原型、名称、访问标志以及代码数据块，它的结构声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexMethod</span> &#123;</span></span><br><span class="line">    u4 methodIdx;    <span class="comment">/* index to a method_id_item */</span></span><br><span class="line">    u4 accessFlags;</span><br><span class="line">    u4 codeOff;      <span class="comment">/* file offset to a code_item */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>methodIdx指向DexMethodId的索引，accessFlags为访问标志，codeOff指向了一个DexCode结构体，该结构体描述了方法更详细的信息以及方法中指令的内容。DexCode结构声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexCode</span> &#123;</span></span><br><span class="line">    u2  registersSize;</span><br><span class="line">    u2  insSize;</span><br><span class="line">    u2  outsSize;</span><br><span class="line">    u2  triesSize;</span><br><span class="line">    u4  debugInfoOff;       <span class="comment">/* file offset to debug info stream */</span></span><br><span class="line">    u4  insnsSize;          <span class="comment">/* size of the insns array, in u2 units */</span></span><br><span class="line">    u2  insns[<span class="number">1</span>];</span><br><span class="line">    <span class="comment">/* followed by optional u2 padding */</span></span><br><span class="line">    <span class="comment">/* followed by try_item[triesSize] */</span></span><br><span class="line">    <span class="comment">/* followed by uleb128 handlersSize */</span></span><br><span class="line">    <span class="comment">/* followed by catch_handler_item[handlersSize] */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>registerSize指定了方法中使用的寄存器个数，对应Smali语法中的.register指令；insSize指定了方法的参数个数，对应Smali语法中的.parameter指令；outSize指定方法调用外部方法时使用的寄存器个数；triesSize指定方法中Try/Catch的个数；如果dex文件保留了调试信息，debugInfoOff字段会指向它；insnsSize字段指定了接下来的指令长度，insns字段即为真正的代码部分了。</p>
+<h2 id="解析指令"><a href="#解析指令" class="headerlink" title="解析指令"></a>解析指令</h2><p>通过上面所列举的结构体，我们基本上可以定位到所有的类、变量和方法，以及它们的名称、类型、访问标志和参数，这些都可以直接或者间接地通过字符串表所获取。可是，上面的最后一个结构体DexCode，它描述了对应方法的详细信息，最后一个字段insns数据直接包含了具体的代码，这些代码是二进制的，如何将它们解析成为可读的形式（Smali代码）呢？接下来我们就做此尝试。</p>
+<h3 id="静态数据"><a href="#静态数据" class="headerlink" title="静态数据"></a>静态数据</h3><p>静态成员属于整个类，当系统第一次使用该类时，就会为其分配内存空间，这部分在DEX文件中是以经过编码的形式来保存的，结构DexClassDef的staticValuesOff字段指向的就是这一部分数据。</p>
+<p>编码数据的结构声明如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">DexEncodedArray</span> &#123;</span></span><br><span class="line">    u1  <span class="built_in">array</span>[<span class="number">1</span>];                   <span class="comment">/* data in encoded_array format */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>这意味是数据是按字节编码的一串数据。一个编码数据由两部分组成：数据类型和数据大小、数据内容。可以看一下官方文档的介绍：</p>
+<p><center><br>  <img src="/uploads/Android/dex/encoded_value.png" width="90%" height="80%"><br></center><br>数据类型和数据大小一共用一个字节表示，高三位的值为数据的大小size减1，低五位表示数据的类型。关于类型的信息仍然可以参考官方文档：</p>
+<p><center><br>  <img src="/uploads/Android/dex/encoded_value_format.png" width="90%" height="80%"><br></center><br>可以看到数据的类型一共分了16种，前面6种都表示的是不同类型的数据，<code>value</code>表示的就是该数据的值；<code>VALUE_STRING</code>表示的是字符串，<code>value</code>表示的是对应字符串在字符串表中的索引；<code>VALUE_TYPE</code>表示类型，<code>value</code>表示的是对应类型的<code>DexTypeId</code>结构的索引；<code>VALUE_FIELD</code>表示域，<code>value</code>表示的是对应域的<code>DexFieldId</code>结构的索引；<code>VALUE_METHOD</code>表示方法，<code>VALUE_ENUM</code>表示枚举，它们的<code>value</code>也是对应结构的索引值；<code>VALUE_NULL</code>表示空值NULL，<code>value</code>为空；<code>VALUE_BOOLEAN</code>表示布尔型，<code>value</code>也为空，由<code>val_arg</code>来表示，非0表示TRUE，0表示FALSE。 <code>VALUE_ARRAY</code>表示数组，它的<code>value</code>为空，后面直接跟的是编码过的数组内容，数组也分两部分：数组大小（uleb128表示）、数组内容（每个元素都是一个编码过的值）。官方文档说明如下：</p>
+<p><center><br>  <img src="/uploads/Android/dex/encoded_array_format.png" width="90%" height="80%"><br></center><br>VALUE_ANNOTATION表示的是注释，它的value也为空，后面直接跟着编码过的注释内容，分为三部分：注释类对应DexTypeId结构的索引、注释内容的大小、注释内容（数组的形式）。官方文档说明如下：</p>
+<p><center><br>  <img src="/uploads/Android/dex/encoded_annotation_format.png" width="90%" height="80%"><br></center><br>每个元素又分两部分：元素名（实际上是字符串标的一个索引值）、值（按照上述方法编码过的）。这一部分不再展开了。<br>那么根据上面的这些信息，我们可以写出来有关解析静态数据的逻辑：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br></pre></td><td class="code"><pre><span class="line">&apos;&apos;&apos; Parse encoded value according different types &apos;&apos;&apos;</span><br><span class="line">def parse_encoded_value(dex_object, content):</span><br><span class="line">    offset = 0</span><br><span class="line">    arg_type, = struct.unpack_from(&quot;B&quot;, content, offset)</span><br><span class="line">    offset += struct.calcsize(&quot;B&quot;)</span><br><span class="line">    value_arg = arg_type &gt;&gt; 5</span><br><span class="line">    value_type = arg_type &amp; 0x1F</span><br><span class="line">    if value_type in [0x2, 0x3, 0x4, 0x6, 0x10, 0x11, 0x17, 0x18, 0x19, 0x1a, 0x1b]:</span><br><span class="line">        &apos;&apos;&apos; Construct the actual value of some types &apos;&apos;&apos;</span><br><span class="line">        sum = 0</span><br><span class="line">        for i in xrange(0, value_arg):</span><br><span class="line">            mm = ord(content[offset+i])</span><br><span class="line">            mm &lt;&lt;= 8 * i</span><br><span class="line">            sum |= mm</span><br><span class="line">        if value_type == 0x17:</span><br><span class="line">            print &quot;string@%d&quot; % sum,</span><br><span class="line">            print dex_object.get_string_by_id(sum),</span><br><span class="line">        elif value_type == 0x18:</span><br><span class="line">            print &quot;type@%d&quot; % sum,</span><br><span class="line">            print dex_object.get_type_name(sum),</span><br><span class="line">        elif value_type == 0x19:</span><br><span class="line">            print &quot;field@%d&quot; % sum,</span><br><span class="line">            print dex_object.get_field_name(sum),</span><br><span class="line">        elif value_type == 0x1a:</span><br><span class="line">            print &quot;method@%d&quot; % sum,</span><br><span class="line">            print dex_object.get_method_name(sum),</span><br><span class="line">        else:</span><br><span class="line">            str = &quot;&quot;</span><br><span class="line">            for j in xrange(0, value_arg + 1):</span><br><span class="line">                str += &quot;%02x&quot; % (ord(content[offset+j]))</span><br><span class="line">            print str,   </span><br><span class="line">        offset += (value_arg+1)</span><br><span class="line">    elif value_type ==0x0:</span><br><span class="line">        print &quot;%02x&quot; % (ord(content[offset])),</span><br><span class="line">        offset += 1</span><br><span class="line">    elif value_type == 0x1e:</span><br><span class="line">        print &quot;NULL&quot;,</span><br><span class="line">    elif value_type == 0x1f:</span><br><span class="line">        if value_arg == 0:</span><br><span class="line">            print &quot;False&quot;,</span><br><span class="line">        else:</span><br><span class="line">            print &quot;True&quot;,</span><br><span class="line">        offset += 0</span><br><span class="line">    elif value_type == 0x1c:</span><br><span class="line">        n, size = get_uleb128(content[offset:offset+5])</span><br><span class="line">        offset += n</span><br><span class="line">        print &quot;[%d]&quot; % size,</span><br><span class="line">        for q in xrange(0, size):</span><br><span class="line">            offset += parse_encoded_value(dex_object, content[offset:])</span><br><span class="line">    elif value_type == 0x1d:</span><br><span class="line">        offset += parse_encoded_annotation(dex_object, content[offset:])</span><br><span class="line">    else:</span><br><span class="line">        print &quot;***************error parse encode_value**************&quot;</span><br><span class="line">    return offset</span><br><span class="line">&apos;&apos;&apos; Parse encoded annotation &apos;&apos;&apos;</span><br><span class="line">def parse_encoded_annotation(dex_object, content):</span><br><span class="line">    offset = 0</span><br><span class="line">    n, typeidx = get_uleb128(content[offset:offset+5])</span><br><span class="line">    offset += n</span><br><span class="line">    n, size = get_uleb128(content[offset:offset+5])</span><br><span class="line">    offset += n</span><br><span class="line">    for i in xrange(0, size):</span><br><span class="line">        n, name_idx = get_uleb128(content[offset:offset+5])</span><br><span class="line">        offset += n</span><br><span class="line">        offset += parse_encoded_value(dex_object, content[offset:])</span><br><span class="line">    return offset</span><br></pre></td></tr></table></figure></p>
+<p>上面的代码虽然长一些，但是逻辑还是很清楚的。</p>
+<h3 id="指令数据"><a href="#指令数据" class="headerlink" title="指令数据"></a>指令数据</h3><p>我们前面已经提到过，关于一个方法的具体信息保存在对应的DexCode结构中。包括了：方法中使用的寄存器个数、方法调用外部方法时使用的寄存器个数、方法的参数个数、指令长度，等等。最后的insns字段是真正的代码部分。</p>
+<p>根据Dalvik指令格式介绍，每16位的字采用空格分隔开来，每个字母表示四位，每条指令的参数从指令第一部分开始，op位于低8位，高8位可以是一个8位的参数，也可以是两个4位的参数，还可以为空，如果指令超过16位，则后面部分依次作为参数。</p>
+<p>以下是某个DEX文件中具体的代码实例：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">0	0x70, 0x10, 0x05, 0x00, 0x00, 0x00, 0x0E, 0x00|</span><br><span class="line">1	0x62, 0x00, 0x00, 0x00, 0x22, 0x01, 0x04, 0x00, 0x70, 0x10, 0x06, 0x00, 0x01, 0x00, 0x6E, 0x20, 0x07, 0x00, 0x31, 0x00, 0x0C, 0x01, 0x1A, 0x02, 0x00, 0x00, 0x6E, 0x20, 0x07, 0x00, 0x21, 0x00, 0x0C, 0x01, 0x6E, 0x10, 0x08, 0x00, 0x01, 0x00, 0x0C, 0x01, 0x12, 0x02, 0x23, 0x22, 0x07, 0x00, 0x6E, 0x30, 0x03, 0x00, 0x10, 0x02, 0x0E, 0x00</span><br><span class="line">2	0x1A, 0x00, 0x14, 0x00, 0x71, 0x10, 0x01, 0x00, 0x00, 0x00, 0x62, 0x00, 0x00, 0x00, 0x1A, 0x01, 0x02, 0x00, 0x6E, 0x20, 0x04, 0x00, 0x10, 0x00, 0x0E, 0x00</span><br></pre></td></tr></table></figure></p>
+<p>首先看第一个指令，可以将其划分为：<code>0x70, 0x10 | 0x05, 0x00 | 0x00, 0x00 | 0x0E, 0x00</code>。指令格式采用小端方式，第一部分是低8位0x70（op），拿到op后，查看Dalvik的官方文档dalvik-bytecode.html对于0x70的定义：</p>
+<p><center><br>  <img src="/uploads/Android/dex/op0x70.png" width="100%" height="80%"><br></center><br>可以看到0x70表示为<code>invoke-direct</code>，而指令的格式编码为35c。看一下官方文档对于指令格式标识的类型码的说明：</p>
+<p><center><br>  <img src="/uploads/Android/dex/typecode.png" width="80%" height="80%"><br></center><br>单独使用位标识还无法确定一条指令，必须通过指令格式标识来指定指令的格式编码。它的约定如下：</p>
+<ul>
+<li>指令格式标识大多由三个字符组成，前两个是数字，最后一个是字母</li>
+<li>第一个数字是表示指令有多少个16位的字组成</li>
+<li>第二个数字是表示指令最多使用寄存器的个数。特殊标记“r”标识使用一定范围内的寄存器</li>
+<li>第三个字母为类型码，表示指令用到的额外数据的类型<br>所以当前的指令格式编码为35c表示：（1）该条指令占用了3个16位；（2）该条指令最多使用5个寄存器；（3）该条指令有常量池索引。既然占用了3个16位，所以先将该条指令的3个16位拷贝过来<code>0x70, 0x10 | 0x05, 0x00 | 0x00, 0x00</code>。</li>
+</ul>
+<p>查看instruction-formats.html对于类型码35c的定义：</p>
+<p><center><br>  <img src="/uploads/Android/dex/35cformat.png" width="100%" height="80%"><br></center><br>由于每个字母占用4位, 所以按照类型码35c的格式编码解析当前指令为:</p>
+<p><center><br>  <img src="/uploads/Android/dex/35cparse.png" width="80%" height="80%"><br></center><br>B = 1，A = 0，C = 5，D = 0，E = 0，F = 0，G = 0。可以看到后面[B = 1]对应的是<code>[B=1] op {vD}, kind@CCCC</code>，由于D = 0， 所以 {vD) == {v0}。上面关于0x70对应的指令说明，可以看到C表示的是方法列表的索引值，实际上该索引值对应的方法全称是：<code>void Ljava/lang/Object--&gt;init()</code>。所以最终该条指令解析为：<code>invoke-direct {v0}, Ljava/lang/Object-&gt;&lt;init&gt;V</code>。<br>然后继续解析剩下的指令：0x0E, 0x00。还是一样的方法，0x0E为低8位，为op，查看dalvik-bytecode.html 关于0x0E的定义：</p>
+<p><center><br>  <img src="/uploads/Android/dex/op0x0e.png" width="100%" height="80%"><br></center><br>指令的格式编码为10x，表示：（1）该条指令占用了1个16位；（2）该条指令最多使用0个寄存器；（3）该条指令无额外数据。最终该条指令解析为：<code>return-void</code>。<br>这样手动分析十分耗费力气，我们接下来看一下怎么通过代码来解析这些指令。</p>
+<p>首先建立好所有的指令索引：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br><span class="line">218</span><br><span class="line">219</span><br><span class="line">220</span><br><span class="line">221</span><br><span class="line">222</span><br><span class="line">223</span><br><span class="line">224</span><br><span class="line">225</span><br><span class="line">226</span><br><span class="line">227</span><br><span class="line">228</span><br><span class="line">229</span><br><span class="line">230</span><br><span class="line">231</span><br><span class="line">232</span><br><span class="line">233</span><br><span class="line">234</span><br><span class="line">235</span><br><span class="line">236</span><br><span class="line">237</span><br><span class="line">238</span><br><span class="line">239</span><br><span class="line">240</span><br><span class="line">241</span><br><span class="line">242</span><br><span class="line">243</span><br><span class="line">244</span><br><span class="line">245</span><br><span class="line">246</span><br><span class="line">247</span><br><span class="line">248</span><br><span class="line">249</span><br><span class="line">250</span><br><span class="line">251</span><br><span class="line">252</span><br><span class="line">253</span><br><span class="line">254</span><br><span class="line">255</span><br><span class="line">256</span><br><span class="line">257</span><br><span class="line">258</span><br></pre></td><td class="code"><pre><span class="line">dex_decode=&#123;</span><br><span class="line">    <span class="number">0</span>:(<span class="number">0x00</span>,<span class="string">'nop'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">1</span>:(<span class="number">0x01</span>,<span class="string">'move'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">2</span>:(<span class="number">0x02</span>,<span class="string">'move/from16'</span>,<span class="string">'fmt22x'</span>,FMT22X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">3</span>:(<span class="number">0x03</span>,<span class="string">'move/16'</span>,<span class="string">'fmt32x'</span>,FMT32X,<span class="number">3</span>),</span><br><span class="line">    <span class="number">4</span>:(<span class="number">0x04</span>,<span class="string">'move-wide'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">5</span>:(<span class="number">0x05</span>,<span class="string">'move-wide/from16'</span>,<span class="string">'fmt22x'</span>,FMT22X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">6</span>:(<span class="number">0x06</span>,<span class="string">'move-wide/16'</span>,<span class="string">'fmt32x'</span>,FMT32X,<span class="number">3</span>),</span><br><span class="line">    <span class="number">7</span>:(<span class="number">0x07</span>,<span class="string">'move-object'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">8</span>:(<span class="number">0x08</span>,<span class="string">'move-object/from16'</span>,<span class="string">'fmt22x'</span>,FMT22X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">9</span>:(<span class="number">0x09</span>,<span class="string">'move-object/16'</span>,<span class="string">'fmt32x'</span>,FMT32X,<span class="number">3</span>),</span><br><span class="line">    <span class="number">10</span>:(<span class="number">0x0a</span>,<span class="string">'move-result'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">11</span>:(<span class="number">0x0b</span>,<span class="string">'move-result-wide'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">12</span>:(<span class="number">0x0c</span>,<span class="string">'move-result-object'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">13</span>:(<span class="number">0x0d</span>,<span class="string">'move-exception'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">14</span>:(<span class="number">0x0e</span>,<span class="string">'return-void'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">15</span>:(<span class="number">0x0f</span>,<span class="string">'return'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">16</span>:(<span class="number">0x10</span>,<span class="string">'return-wide'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">17</span>:(<span class="number">0x11</span>,<span class="string">'return-object'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">18</span>:(<span class="number">0x12</span>,<span class="string">'const/4'</span>,<span class="string">'fmt11n'</span>,FMT11N,<span class="number">1</span>),</span><br><span class="line">    <span class="number">19</span>:(<span class="number">0x13</span>,<span class="string">'const/16'</span>,<span class="string">'fmt21s'</span>,FMT21S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">20</span>:(<span class="number">0x14</span>,<span class="string">'const'</span>,<span class="string">'fmt31i'</span>,FMT31I,<span class="number">3</span>),</span><br><span class="line">    <span class="number">21</span>:(<span class="number">0x15</span>,<span class="string">'const/high16'</span>,<span class="string">'fmt21h'</span>,FMT21H,<span class="number">2</span>),</span><br><span class="line">    <span class="number">22</span>:(<span class="number">0x16</span>,<span class="string">'const-wide/16'</span>,<span class="string">'fmt21s'</span>,FMT21S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">23</span>:(<span class="number">0x17</span>,<span class="string">'const-wide/32'</span>,<span class="string">'fmt31i'</span>,FMT31I,<span class="number">3</span>),</span><br><span class="line">    <span class="number">24</span>:(<span class="number">0x18</span>,<span class="string">'const-wide'</span>,<span class="string">'fmt51l'</span>,FMT51L,<span class="number">5</span>),</span><br><span class="line">    <span class="number">25</span>:(<span class="number">0x19</span>,<span class="string">'const-wide/high16'</span>,<span class="string">'fmt21h'</span>,FMT21H,<span class="number">2</span>),</span><br><span class="line">    <span class="number">26</span>:(<span class="number">0x1a</span>,<span class="string">'const-string'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">27</span>:(<span class="number">0x1b</span>,<span class="string">'const-string/jumbo'</span>,<span class="string">'fmt31c'</span>,FMT31C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">28</span>:(<span class="number">0x1c</span>,<span class="string">'const-class'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">29</span>:(<span class="number">0x1d</span>,<span class="string">'monitor-enter'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">30</span>:(<span class="number">0x1e</span>,<span class="string">'monitor-exit'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">31</span>:(<span class="number">0x1f</span>,<span class="string">'check-cast'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">32</span>:(<span class="number">0x20</span>,<span class="string">'instance-of'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">33</span>:(<span class="number">0x21</span>,<span class="string">'array-length'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">34</span>:(<span class="number">0x22</span>,<span class="string">'new-instance'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">35</span>:(<span class="number">0x23</span>,<span class="string">'new-array'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">36</span>:(<span class="number">0x24</span>,<span class="string">'filled-new-array'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">37</span>:(<span class="number">0x25</span>,<span class="string">'filled-new-array/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">38</span>:(<span class="number">0x26</span>,<span class="string">'fill-array-data'</span>,<span class="string">'fmt31t'</span>,FMT31T,<span class="number">3</span>),</span><br><span class="line">    <span class="number">39</span>:(<span class="number">0x27</span>,<span class="string">'throw'</span>,<span class="string">'fmt11x'</span>,FMT11X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">40</span>:(<span class="number">0x28</span>,<span class="string">'goto'</span>,<span class="string">'fmt10t'</span>,FMT10T,<span class="number">1</span>),</span><br><span class="line">    <span class="number">41</span>:(<span class="number">0x29</span>,<span class="string">'goto/16'</span>,<span class="string">'fmt20t'</span>,FMT20T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">42</span>:(<span class="number">0x2a</span>,<span class="string">'goto/32'</span>,<span class="string">'fmt30t'</span>,FMT30T,<span class="number">3</span>),</span><br><span class="line">    <span class="number">43</span>:(<span class="number">0x2b</span>,<span class="string">'packed-switch'</span>,<span class="string">'fmt31t'</span>,FMT31T,<span class="number">3</span>),</span><br><span class="line">    <span class="number">44</span>:(<span class="number">0x2c</span>,<span class="string">'sparse-switch'</span>,<span class="string">'fmt31t'</span>,FMT31T,<span class="number">3</span>),</span><br><span class="line">    <span class="number">45</span>:(<span class="number">0x2d</span>,<span class="string">'cmpl-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">46</span>:(<span class="number">0x2e</span>,<span class="string">'cmpg-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">47</span>:(<span class="number">0x2f</span>,<span class="string">'cmpl-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">48</span>:(<span class="number">0x30</span>,<span class="string">'cmpg-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">49</span>:(<span class="number">0x31</span>,<span class="string">'cmp-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">50</span>:(<span class="number">0x32</span>,<span class="string">'if-eq'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">51</span>:(<span class="number">0x33</span>,<span class="string">'if-ne'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">52</span>:(<span class="number">0x34</span>,<span class="string">'if-lt'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">53</span>:(<span class="number">0x35</span>,<span class="string">'if-ge'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">54</span>:(<span class="number">0x36</span>,<span class="string">'if-gt'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">55</span>:(<span class="number">0x37</span>,<span class="string">'if-le'</span>,<span class="string">'fmt22t'</span>,FMT22T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">56</span>:(<span class="number">0x38</span>,<span class="string">'if-eqz'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">57</span>:(<span class="number">0x39</span>,<span class="string">'if-nez'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">58</span>:(<span class="number">0x3a</span>,<span class="string">'if-ltz'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">59</span>:(<span class="number">0x3b</span>,<span class="string">'if-gez'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">60</span>:(<span class="number">0x3c</span>,<span class="string">'if-gtz'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">61</span>:(<span class="number">0x3d</span>,<span class="string">'if-lez'</span>,<span class="string">'fmt21t'</span>,FMT21T,<span class="number">2</span>),</span><br><span class="line">    <span class="number">62</span>:(<span class="number">0x3e</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">63</span>:(<span class="number">0x3f</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">64</span>:(<span class="number">0x40</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">65</span>:(<span class="number">0x41</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">66</span>:(<span class="number">0x42</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">67</span>:(<span class="number">0x43</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">68</span>:(<span class="number">0x44</span>,<span class="string">'aget'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">69</span>:(<span class="number">0x45</span>,<span class="string">'aget-wide'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">70</span>:(<span class="number">0x46</span>,<span class="string">'aget-object'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">71</span>:(<span class="number">0x47</span>,<span class="string">'aget-boolean'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">72</span>:(<span class="number">0x48</span>,<span class="string">'aget-byte'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">73</span>:(<span class="number">0x49</span>,<span class="string">'aget-char'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">74</span>:(<span class="number">0x4a</span>,<span class="string">'aget-short'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">75</span>:(<span class="number">0x4b</span>,<span class="string">'aput'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">76</span>:(<span class="number">0x4c</span>,<span class="string">'aput-wide'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">77</span>:(<span class="number">0x4d</span>,<span class="string">'aput-object'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">78</span>:(<span class="number">0x4e</span>,<span class="string">'aput-boolean'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">79</span>:(<span class="number">0x4f</span>,<span class="string">'aput-byte'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">80</span>:(<span class="number">0x50</span>,<span class="string">'aput-shar'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">81</span>:(<span class="number">0x51</span>,<span class="string">'aput-short'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">82</span>:(<span class="number">0x52</span>,<span class="string">'iget'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">83</span>:(<span class="number">0x53</span>,<span class="string">'iget-wide'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">84</span>:(<span class="number">0x54</span>,<span class="string">'iget-object'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">85</span>:(<span class="number">0x55</span>,<span class="string">'iget-boolean'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">86</span>:(<span class="number">0x56</span>,<span class="string">'iget-byte'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">87</span>:(<span class="number">0x57</span>,<span class="string">'iget-char'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">88</span>:(<span class="number">0x58</span>,<span class="string">'iget-short'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">89</span>:(<span class="number">0x59</span>,<span class="string">'iput'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">90</span>:(<span class="number">0x5a</span>,<span class="string">'iput-wide'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">91</span>:(<span class="number">0x5b</span>,<span class="string">'iput-object'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">92</span>:(<span class="number">0x5c</span>,<span class="string">'iput-boolean'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">93</span>:(<span class="number">0x5d</span>,<span class="string">'iput-byte'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">94</span>:(<span class="number">0x5e</span>,<span class="string">'iput-char'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">95</span>:(<span class="number">0x5f</span>,<span class="string">'iput-short'</span>,<span class="string">'fmt22c'</span>,FMT22C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">96</span>:(<span class="number">0x60</span>,<span class="string">'sget'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">97</span>:(<span class="number">0x61</span>,<span class="string">'sget-wide'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">98</span>:(<span class="number">0x62</span>,<span class="string">'sget-object'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">99</span>:(<span class="number">0x63</span>,<span class="string">'sget-boolean'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">100</span>:(<span class="number">0x64</span>,<span class="string">'sget-byte'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">101</span>:(<span class="number">0x65</span>,<span class="string">'sget-char'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">102</span>:(<span class="number">0x66</span>,<span class="string">'sget-short'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">103</span>:(<span class="number">0x67</span>,<span class="string">'sput'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">104</span>:(<span class="number">0x68</span>,<span class="string">'sput-wide'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">105</span>:(<span class="number">0x69</span>,<span class="string">'sput-object'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">106</span>:(<span class="number">0x6a</span>,<span class="string">'sput-boolean'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">107</span>:(<span class="number">0x6b</span>,<span class="string">'sput-byte'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">108</span>:(<span class="number">0x6c</span>,<span class="string">'sput-char'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">109</span>:(<span class="number">0x6d</span>,<span class="string">'sput-short'</span>,<span class="string">'fmt21c'</span>,FMT21C,<span class="number">2</span>),</span><br><span class="line">    <span class="number">110</span>:(<span class="number">0x6e</span>,<span class="string">'invoke-virtual'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">111</span>:(<span class="number">0x6f</span>,<span class="string">'invoke-super'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">112</span>:(<span class="number">0x70</span>,<span class="string">'invoke-direct'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">113</span>:(<span class="number">0x71</span>,<span class="string">'invoke-static'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">114</span>:(<span class="number">0x72</span>,<span class="string">'invoke-insterface'</span>,<span class="string">'fmt35c'</span>,FMT35C,<span class="number">3</span>),</span><br><span class="line">    <span class="number">115</span>:(<span class="number">0x73</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">116</span>:(<span class="number">0x74</span>,<span class="string">'invoke-virtual/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">117</span>:(<span class="number">0x75</span>,<span class="string">'invoke-super/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">118</span>:(<span class="number">0x76</span>,<span class="string">'invoke-direct/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">119</span>:(<span class="number">0x77</span>,<span class="string">'invoke-static/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">120</span>:(<span class="number">0x78</span>,<span class="string">'invoke-interface/range'</span>,<span class="string">'fmt3rc'</span>,FMT3RC,<span class="number">3</span>),</span><br><span class="line">    <span class="number">121</span>:(<span class="number">0x79</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">122</span>:(<span class="number">0x7a</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">123</span>:(<span class="number">0x7b</span>,<span class="string">'neg-int'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">124</span>:(<span class="number">0x7c</span>,<span class="string">'not-int'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">125</span>:(<span class="number">0x7d</span>,<span class="string">'neg-long'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">126</span>:(<span class="number">0x7e</span>,<span class="string">'not-long'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">127</span>:(<span class="number">0x7f</span>,<span class="string">'neg-float'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">128</span>:(<span class="number">0x80</span>,<span class="string">'neg-double'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">129</span>:(<span class="number">0x81</span>,<span class="string">'int-to-long'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">130</span>:(<span class="number">0x82</span>,<span class="string">'int-to-float'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">131</span>:(<span class="number">0x83</span>,<span class="string">'int-to-double'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">132</span>:(<span class="number">0x84</span>,<span class="string">'long-to-int'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">133</span>:(<span class="number">0x85</span>,<span class="string">'long-to-float'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">134</span>:(<span class="number">0x86</span>,<span class="string">'long-to-double'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">135</span>:(<span class="number">0x87</span>,<span class="string">'float-to-int'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">136</span>:(<span class="number">0x88</span>,<span class="string">'float-to-long'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">137</span>:(<span class="number">0x89</span>,<span class="string">'float-to-double'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">138</span>:(<span class="number">0x8a</span>,<span class="string">'double-to-int'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">139</span>:(<span class="number">0x8b</span>,<span class="string">'double-to-long'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">140</span>:(<span class="number">0x8c</span>,<span class="string">'double-to-float'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">141</span>:(<span class="number">0x8d</span>,<span class="string">'int-to-byte'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">142</span>:(<span class="number">0x8e</span>,<span class="string">'int-to-char'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">143</span>:(<span class="number">0x8f</span>,<span class="string">'int-to-short'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">144</span>:(<span class="number">0x90</span>,<span class="string">'add-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">145</span>:(<span class="number">0x91</span>,<span class="string">'sub-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">146</span>:(<span class="number">0x92</span>,<span class="string">'mul-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">147</span>:(<span class="number">0x93</span>,<span class="string">'div-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">148</span>:(<span class="number">0x94</span>,<span class="string">'rem-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">149</span>:(<span class="number">0x95</span>,<span class="string">'and-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">150</span>:(<span class="number">0x96</span>,<span class="string">'or-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">151</span>:(<span class="number">0x97</span>,<span class="string">'xor-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">152</span>:(<span class="number">0x98</span>,<span class="string">'shl-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">153</span>:(<span class="number">0x99</span>,<span class="string">'shr-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">154</span>:(<span class="number">0x9a</span>,<span class="string">'ushr-int'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">155</span>:(<span class="number">0x9b</span>,<span class="string">'add-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">156</span>:(<span class="number">0x9c</span>,<span class="string">'sub-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">157</span>:(<span class="number">0x9d</span>,<span class="string">'mul-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">158</span>:(<span class="number">0x9e</span>,<span class="string">'div-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">159</span>:(<span class="number">0x9f</span>,<span class="string">'rem-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">160</span>:(<span class="number">0xa0</span>,<span class="string">'and-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">161</span>:(<span class="number">0xa1</span>,<span class="string">'or-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">162</span>:(<span class="number">0xa2</span>,<span class="string">'xor-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">163</span>:(<span class="number">0xa3</span>,<span class="string">'shl-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">164</span>:(<span class="number">0xa4</span>,<span class="string">'shr-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">165</span>:(<span class="number">0xa5</span>,<span class="string">'ushr-long'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">166</span>:(<span class="number">0xa6</span>,<span class="string">'add-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">167</span>:(<span class="number">0xa7</span>,<span class="string">'sub-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">168</span>:(<span class="number">0xa8</span>,<span class="string">'mul-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">169</span>:(<span class="number">0xa9</span>,<span class="string">'div-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">170</span>:(<span class="number">0xaa</span>,<span class="string">'rem-float'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">171</span>:(<span class="number">0xab</span>,<span class="string">'add-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">172</span>:(<span class="number">0xac</span>,<span class="string">'sub-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">173</span>:(<span class="number">0xad</span>,<span class="string">'mul-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">174</span>:(<span class="number">0xae</span>,<span class="string">'div-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">175</span>:(<span class="number">0xaf</span>,<span class="string">'rem-double'</span>,<span class="string">'fmt23x'</span>,FMT23X,<span class="number">2</span>),</span><br><span class="line">    <span class="number">176</span>:(<span class="number">0xb0</span>,<span class="string">'add-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">177</span>:(<span class="number">0xb1</span>,<span class="string">'sub-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">178</span>:(<span class="number">0xb2</span>,<span class="string">'mul-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">179</span>:(<span class="number">0xb3</span>,<span class="string">'div-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">180</span>:(<span class="number">0xb4</span>,<span class="string">'rem-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">181</span>:(<span class="number">0xb5</span>,<span class="string">'and-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">182</span>:(<span class="number">0xb6</span>,<span class="string">'or-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">183</span>:(<span class="number">0xb7</span>,<span class="string">'xor-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">184</span>:(<span class="number">0xb8</span>,<span class="string">'shl-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">185</span>:(<span class="number">0xb9</span>,<span class="string">'shr-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">186</span>:(<span class="number">0xba</span>,<span class="string">'ushr-int/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">187</span>:(<span class="number">0xbb</span>,<span class="string">'add-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">188</span>:(<span class="number">0xbc</span>,<span class="string">'sub-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">189</span>:(<span class="number">0xbd</span>,<span class="string">'mul-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">190</span>:(<span class="number">0xbe</span>,<span class="string">'div-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">191</span>:(<span class="number">0xbf</span>,<span class="string">'rem-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">192</span>:(<span class="number">0xc0</span>,<span class="string">'and-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">193</span>:(<span class="number">0xc1</span>,<span class="string">'or-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">194</span>:(<span class="number">0xc2</span>,<span class="string">'xor-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">195</span>:(<span class="number">0xc3</span>,<span class="string">'shl-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">196</span>:(<span class="number">0xc4</span>,<span class="string">'shr-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">197</span>:(<span class="number">0xc5</span>,<span class="string">'ushr-long/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">198</span>:(<span class="number">0xc6</span>,<span class="string">'add-float/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">199</span>:(<span class="number">0xc7</span>,<span class="string">'sub-float/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">200</span>:(<span class="number">0xc8</span>,<span class="string">'mul-float/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">201</span>:(<span class="number">0xc9</span>,<span class="string">'div-float/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">202</span>:(<span class="number">0xca</span>,<span class="string">'rem-float/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">203</span>:(<span class="number">0xcb</span>,<span class="string">'add-double/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">204</span>:(<span class="number">0xcc</span>,<span class="string">'sub-double/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">205</span>:(<span class="number">0xcd</span>,<span class="string">'mul-double/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">206</span>:(<span class="number">0xce</span>,<span class="string">'div-double/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">207</span>:(<span class="number">0xcf</span>,<span class="string">'rem-double/2addr'</span>,<span class="string">'fmt12x'</span>,FMT12X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">208</span>:(<span class="number">0xd0</span>,<span class="string">'add-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">209</span>:(<span class="number">0xd1</span>,<span class="string">'rsub-int'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">210</span>:(<span class="number">0xd2</span>,<span class="string">'mul-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">211</span>:(<span class="number">0xd3</span>,<span class="string">'div-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">212</span>:(<span class="number">0xd4</span>,<span class="string">'rem-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">213</span>:(<span class="number">0xd5</span>,<span class="string">'and-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">214</span>:(<span class="number">0xd6</span>,<span class="string">'or-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">215</span>:(<span class="number">0xd7</span>,<span class="string">'xor-int/lit16'</span>,<span class="string">'fmt22s'</span>,FMT22S,<span class="number">2</span>),</span><br><span class="line">    <span class="number">216</span>:(<span class="number">0xd8</span>,<span class="string">'add-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">217</span>:(<span class="number">0xd9</span>,<span class="string">'rsub-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">218</span>:(<span class="number">0xda</span>,<span class="string">'mul-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">219</span>:(<span class="number">0xdb</span>,<span class="string">'div-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">220</span>:(<span class="number">0xdc</span>,<span class="string">'rem-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">221</span>:(<span class="number">0xdd</span>,<span class="string">'and-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">222</span>:(<span class="number">0xde</span>,<span class="string">'or-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">223</span>:(<span class="number">0xdf</span>,<span class="string">'xor-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">224</span>:(<span class="number">0xe0</span>,<span class="string">'shl-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">225</span>:(<span class="number">0xe1</span>,<span class="string">'shr-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">226</span>:(<span class="number">0xe2</span>,<span class="string">'ushr-int/lit8'</span>,<span class="string">'fmt22b'</span>,FMT22B,<span class="number">2</span>),</span><br><span class="line">    <span class="number">227</span>:(<span class="number">0xe3</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">228</span>:(<span class="number">0xe4</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">229</span>:(<span class="number">0xe5</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">230</span>:(<span class="number">0xe6</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">231</span>:(<span class="number">0xe7</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">232</span>:(<span class="number">0xe8</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">233</span>:(<span class="number">0xe9</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">234</span>:(<span class="number">0xea</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">235</span>:(<span class="number">0xeb</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">236</span>:(<span class="number">0xec</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">237</span>:(<span class="number">0xed</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">238</span>:(<span class="number">0xee</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">239</span>:(<span class="number">0xef</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">240</span>:(<span class="number">0xf0</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">241</span>:(<span class="number">0xf1</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">242</span>:(<span class="number">0xf2</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">243</span>:(<span class="number">0xf3</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">244</span>:(<span class="number">0xf4</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">245</span>:(<span class="number">0xf5</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">246</span>:(<span class="number">0xf6</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">247</span>:(<span class="number">0xf7</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">248</span>:(<span class="number">0xf8</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">249</span>:(<span class="number">0xf9</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">250</span>:(<span class="number">0xfa</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">251</span>:(<span class="number">0xfb</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">252</span>:(<span class="number">0xfc</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">253</span>:(<span class="number">0xfd</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">254</span>:(<span class="number">0xfe</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">    <span class="number">255</span>:(<span class="number">0xff</span>,<span class="string">'unused'</span>,<span class="string">'fmt10x'</span>,FMT10X,<span class="number">1</span>),</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>数据结构的形式为：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dex_code = &#123;index:(type, code, format, number of <span class="number">16</span>bit-wide word)&#125;</span><br></pre></td></tr></table></figure></p>
+<p>那我们在解析对应的指令时，可以根据不同的格式来统一处理，比如上面提到的35c，实现如下：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">parse_FMT35C</span><span class="params">(buffer,dex_object,pc_point,offset)</span>:</span></span><br><span class="line">    A = ord(buffer[<span class="number">1</span>])&gt;&gt;<span class="number">4</span></span><br><span class="line">    G = ord(buffer[<span class="number">1</span>])&amp;<span class="number">0xf</span></span><br><span class="line">    D = ord(buffer[<span class="number">4</span>])&gt;&gt;<span class="number">4</span></span><br><span class="line">    C = ord(buffer[<span class="number">4</span>])&amp;<span class="number">0xf</span></span><br><span class="line">    F = ord(buffer[<span class="number">5</span>])&gt;&gt;<span class="number">4</span></span><br><span class="line">    E = ord(buffer[<span class="number">5</span>])&amp;<span class="number">0xf</span></span><br><span class="line">    bbbb,=struct.unpack_from(<span class="string">"H"</span>,buffer,<span class="number">2</span>)</span><br><span class="line">    <span class="keyword">if</span> ord(buffer[<span class="number">0</span>]) == <span class="number">0x24</span>:</span><br><span class="line">        prefix=<span class="string">"type@%s"</span>%(dex_object.get_string_by_id(bbbb))</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        prefix=<span class="string">"meth@%s  //%s"</span>%(dex_object.get_method_name(bbbb),dex_object.get_method_fullname(bbbb,<span class="keyword">True</span>))</span><br><span class="line">        <span class="keyword">pass</span></span><br><span class="line">    <span class="keyword">if</span> A == <span class="number">5</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"v%d"</span>%D,<span class="string">"v%d"</span>%E,<span class="string">"v%d"</span>%F,<span class="string">"v%d"</span>%G,<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">elif</span> A == <span class="number">4</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"v%d"</span>%D,<span class="string">"v%d"</span>%E,<span class="string">"v%d"</span>%F,<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">elif</span> A == <span class="number">3</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"v%d"</span>%D,<span class="string">"v%d"</span>%E,<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">elif</span> A == <span class="number">2</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"v%d"</span>%D,<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">elif</span> A == <span class="number">1</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">elif</span> A == <span class="number">0</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"%s"</span>%(prefix))</span><br><span class="line">    <span class="keyword">else</span>:</span><br><span class="line">        <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],<span class="string">"error ......."</span>)</span><br><span class="line">    <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>],dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>],<span class="string">"v%d"</span>%C,<span class="string">"v%d"</span>%D,<span class="string">"v%d"</span>%E,<span class="string">"v%d"</span>%F,<span class="string">"v%d"</span>%G,<span class="string">"%s"</span>%(prefix))</span><br></pre></td></tr></table></figure></p>
+<p>正如上面分析的一样，首先获取A、C、D、E、F、G的值（这里的A实际上就是前面介绍35c编码格式的时候的B，表示参数的个数，两者参考材料来源不同，故而有些出入）。完全是按照官方文档的说明来实现的。</p>
+<p>还可以看一下另外一个例子，就是上面提到的第二个指令编码类型10x：<br><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">parse_FMT10X</span><span class="params">(buffer, dex_object, pc_point, offset)</span>:</span></span><br><span class="line">    <span class="keyword">return</span> (dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">4</span>], dex_decode[ord(buffer[<span class="number">0</span>])][<span class="number">1</span>])</span><br></pre></td></tr></table></figure></p>
+<p>这个就很简单，因为指令都是不带参数的，直接返回指令即可。上面两个实现逻辑中的参数offset都没用到，这个参数只是针对需要在类中相对偏移的指令。</p>
+<p>其他的编码类型的解析不再赘述，再详细的代码逻辑此处也不再继续深入。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>以上便是对DEX文件格式做了一次较为彻底的分析，从文件的组织，到各个结构的含义，最后到编码数据的解析，以及对指令进行反汇编。期间参考了非常详实的材料，在我手中的产出甚至未见得优于原作。包括代码也是看雪论坛上的大神的成果，我只是做到了将其看懂的程度，然后结合理论知识重新写一遍。我所参考的材料全都附于文末。</p>
+<p>此次文档整理周期跨度太长，主要还是浪费时间太多。这次的学习结果还是很不错的，既对Android可执行文件的结构有了特别深刻的了解，也熟悉了对Python的使用，果然还是：“Life is short, use Python!”</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a href="https://www.amazon.cn/dp/B00BMTVUGG/ref=sr_1_1?ie=UTF8&amp;qid=1516463213&amp;sr=8-1&amp;keywords=android%E5%AE%89%E5%85%A8" target="_blank" rel="noopener">Android软件安全与逆向分析</a></li>
+<li><a href="https://bbs.pediy.com/thread-199176.htm" target="_blank" rel="noopener">https://bbs.pediy.com/thread-199176.htm</a></li>
+<li><a href="http://www.cnblogs.com/dacainiao/p/6036834.html" target="_blank" rel="noopener">http://www.cnblogs.com/dacainiao/p/6036834.html</a></li>
+<li><a href="http://androidxref.com/4.0.4/xref/dalvik/docs/" target="_blank" rel="noopener">Dalvik官方文档</a></li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/11/29/Attacklab-Writeup/" rel="next" title="Attacklab-Writeup">
+                <i class="fa fa-chevron-left"></i> Attacklab-Writeup
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.png" alt="Bathingfox">
+            
+              <p class="site-author-name" itemprop="name">Bathingfox</p>
+              <p class="site-description motion-element" itemprop="description">我就是我，是颜色不一样的吃货！！！</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">categories</span>
+                  
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">tags</span>
+                  
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#重拾Android"><span class="nav-number">1.</span> <span class="nav-text">重拾Android</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#DEX文件"><span class="nav-number">2.</span> <span class="nav-text">DEX文件</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#DEX文件数据类型"><span class="nav-number">2.1.</span> <span class="nav-text">DEX文件数据类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEX文件整体结构"><span class="nav-number">2.2.</span> <span class="nav-text">DEX文件整体结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DEX文件数据结构"><span class="nav-number">2.3.</span> <span class="nav-text">DEX文件数据结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#DexMapList"><span class="nav-number">2.3.1.</span> <span class="nav-text">DexMapList</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexStringId"><span class="nav-number">2.3.2.</span> <span class="nav-text">DexStringId</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexTypeId"><span class="nav-number">2.3.3.</span> <span class="nav-text">DexTypeId</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexProtoId"><span class="nav-number">2.3.4.</span> <span class="nav-text">DexProtoId</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexFieldId"><span class="nav-number">2.3.5.</span> <span class="nav-text">DexFieldId</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexMethodId"><span class="nav-number">2.3.6.</span> <span class="nav-text">DexMethodId</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#DexClassDef"><span class="nav-number">2.3.7.</span> <span class="nav-text">DexClassDef</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解析指令"><span class="nav-number">3.</span> <span class="nav-text">解析指令</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#静态数据"><span class="nav-number">3.1.</span> <span class="nav-text">静态数据</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#指令数据"><span class="nav-number">3.2.</span> <span class="nav-text">指令数据</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#小结"><span class="nav-number">4.</span> <span class="nav-text">小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Bathingfox</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.5.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.5.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.5.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.5.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.5.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.5.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

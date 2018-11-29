@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.5.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.5.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.5.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.5.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="写在前面本节内容基本上来自与《Linux内核情景分析》一书，但是许多地方也查阅了其他经典书籍，如《Unix网络编程》，也自己查阅了代码，以及一些函数的Linux man手册。并且，对其中的一些术语按照当前的习惯来称呼。代码参考的是Linux 2.6.20，毕竟在2.4和2.6之间的变化比较大，作为对比来学习。 调用的起点Linux内核为所有与socket有关的操作提供一个统一的系统调用入口，但是在">
+<meta name="keywords" content="Linux,Socket">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux源码学习之socket通信1">
+<meta property="og:url" content="http://yoursite.com/2018/11/25/Linux源码学习之socket通信1/index.html">
+<meta property="og:site_name" content="爱洗澡的狐狸">
+<meta property="og:description" content="写在前面本节内容基本上来自与《Linux内核情景分析》一书，但是许多地方也查阅了其他经典书籍，如《Unix网络编程》，也自己查阅了代码，以及一些函数的Linux man手册。并且，对其中的一些术语按照当前的习惯来称呼。代码参考的是Linux 2.6.20，毕竟在2.4和2.6之间的变化比较大，作为对比来学习。 调用的起点Linux内核为所有与socket有关的操作提供一个统一的系统调用入口，但是在">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2018-11-25T14:03:20.024Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux源码学习之socket通信1">
+<meta name="twitter:description" content="写在前面本节内容基本上来自与《Linux内核情景分析》一书，但是许多地方也查阅了其他经典书籍，如《Unix网络编程》，也自己查阅了代码，以及一些函数的Linux man手册。并且，对其中的一些术语按照当前的习惯来称呼。代码参考的是Linux 2.6.20，毕竟在2.4和2.6之间的变化比较大，作为对比来学习。 调用的起点Linux内核为所有与socket有关的操作提供一个统一的系统调用入口，但是在">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="爱洗澡的狐狸" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/25/Linux源码学习之socket通信1/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Linux源码学习之socket通信1 | 爱洗澡的狐狸</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">爱洗澡的狐狸</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/25/Linux源码学习之socket通信1/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Bathingfox">
+      <meta itemprop="description" content="我就是我，是颜色不一样的吃货！！！">
+      <meta itemprop="image" content="/images/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爱洗澡的狐狸">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux源码学习之socket通信1
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2018-11-25 12:50:16 / Modified: 22:03:20" itemprop="dateCreated datePublished" datetime="2018-11-25T12:50:16+08:00">2018-11-25</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/专业笔记/" itemprop="url" rel="index"><span itemprop="name">专业笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h2><p>本节内容基本上来自与《Linux内核情景分析》一书，但是许多地方也查阅了其他经典书籍，如《Unix网络编程》，也自己查阅了代码，以及一些函数的Linux man手册。并且，对其中的一些术语按照当前的习惯来称呼。代码参考的是Linux 2.6.20，毕竟在2.4和2.6之间的变化比较大，作为对比来学习。</p>
+<h2 id="调用的起点"><a href="#调用的起点" class="headerlink" title="调用的起点"></a>调用的起点</h2><p>Linux内核为所有与socket有关的操作提供一个统一的系统调用入口，但是在用户程序界面上则通过C语言程序库提供诸多库函数，看起来好像都是独立的系统调用一样。内核中为socket设置的总入口为sys_socketcall()，其代码位置在net/socket.c。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">/*</span><br><span class="line"> *    System call vectors.</span><br><span class="line"> *</span><br><span class="line"> *    Argument checking cleaned up. Saved 20% in size.</span><br><span class="line"> *  This function doesn&apos;t need to set the kernel lock because</span><br><span class="line"> *  it is set by the callees.</span><br><span class="line"> */</span><br><span class="line">asmlinkage long sys_socketcall(int call, unsigned long __user *args)</span><br><span class="line">&#123;</span><br><span class="line">    unsigned long a[6];</span><br><span class="line">    unsigned long a0, a1;</span><br><span class="line">    int err;</span><br><span class="line">    if (call &lt; 1 || call &gt; SYS_RECVMSG)</span><br><span class="line">        return -EINVAL;</span><br><span class="line">    /* copy_from_user should be SMP safe. */</span><br><span class="line">    if (copy_from_user(a, args, nargs[call]))</span><br><span class="line">        return -EFAULT;</span><br><span class="line">    err = audit_socketcall(nargs[call] / sizeof(unsigned long), a);</span><br><span class="line">    if (err)</span><br><span class="line">        return err;</span><br><span class="line">    a0 = a[0];</span><br><span class="line">    a1 = a[1];</span><br><span class="line">    </span><br><span class="line">    ......</span><br></pre></td></tr></table></figure></p>
+<a id="more"></a>
+<p>开始这一部分是对参数进行判断和处理，并对调用过程进行审计。函数的第一个参数call是具体的操作码，表示要进行何种socket相关的操作，args是一个数组指针，由于操作码不同，要从用户空间复制的参数个数也不同。为了根据操作码确定需要从用户空间复制的字节数，代码中定义了一个数组nargs[]。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">/* Argument list sizes for sys_socketcall */</span><br><span class="line">#define AL(x) ((x) * sizeof(unsigned long))</span><br><span class="line">static const unsigned char nargs[18]=&#123;</span><br><span class="line">    AL(0),AL(3),AL(3),AL(3),AL(2),AL(3),</span><br><span class="line">    AL(3),AL(3),AL(4),AL(4),AL(4),AL(6),</span><br><span class="line">    AL(6),AL(2),AL(5),AL(5),AL(3),AL(3)</span><br><span class="line">&#125;;</span><br><span class="line">#undef AL</span><br></pre></td></tr></table></figure>
+<p>至于具体的操作码对应的宏定义在include/linux/net.h中定义：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br></pre></td><td class="code"><pre><span class="line">#define SYS_SOCKET    1        /* sys_socket(2)        */</span><br><span class="line">#define SYS_BIND    2        /* sys_bind(2)            */</span><br><span class="line">#define SYS_CONNECT    3        /* sys_connect(2)        */</span><br><span class="line">#define SYS_LISTEN    4        /* sys_listen(2)        */</span><br><span class="line">#define SYS_ACCEPT    5        /* sys_accept(2)        */</span><br><span class="line">#define SYS_GETSOCKNAME    6        /* sys_getsockname(2)        */</span><br><span class="line">#define SYS_GETPEERNAME    7        /* sys_getpeername(2)        */</span><br><span class="line">#define SYS_SOCKETPAIR    8        /* sys_socketpair(2)        */</span><br><span class="line">#define SYS_SEND    9        /* sys_send(2)            */</span><br><span class="line">#define SYS_RECV    10        /* sys_recv(2)            */</span><br><span class="line">#define SYS_SENDTO    11        /* sys_sendto(2)        */</span><br><span class="line">#define SYS_RECVFROM    12        /* sys_recvfrom(2)        */</span><br><span class="line">#define SYS_SHUTDOWN    13        /* sys_shutdown(2)        */</span><br><span class="line">#define SYS_SETSOCKOPT    14        /* sys_setsockopt(2)        */</span><br><span class="line">#define SYS_GETSOCKOPT    15        /* sys_getsockopt(2)        */</span><br><span class="line">#define SYS_SENDMSG    16        /* sys_sendmsg(2)        */</span><br><span class="line">#define SYS_RECVMSG    17        /* sys_recvmsg(2)        */</span><br><span class="line">在函数sys_socketcall()中接下来会根据这些不同的操作码来调用具体的对应函数，注释中括号里的数字“2”表示该函数为系统调用。这里面包含了针对socket套接字的所有操作内容，可以根据不同的操作去深入探究对应的函数。</span><br><span class="line"></span><br><span class="line">    switch (call) &#123;</span><br><span class="line">    case SYS_SOCKET:</span><br><span class="line">        err = sys_socket(a0, a1, a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_BIND:</span><br><span class="line">        err = sys_bind(a0, (struct sockaddr __user *)a1, a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_CONNECT:</span><br><span class="line">        err = sys_connect(a0, (struct sockaddr __user *)a1, a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_LISTEN:</span><br><span class="line">        err = sys_listen(a0, a1);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_ACCEPT:</span><br><span class="line">        err =</span><br><span class="line">            sys_accept(a0, (struct sockaddr __user *)a1,</span><br><span class="line">                   (int __user *)a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_GETSOCKNAME:</span><br><span class="line">        err =</span><br><span class="line">            sys_getsockname(a0, (struct sockaddr __user *)a1,</span><br><span class="line">                    (int __user *)a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_GETPEERNAME:</span><br><span class="line">        err =</span><br><span class="line">            sys_getpeername(a0, (struct sockaddr __user *)a1,</span><br><span class="line">                    (int __user *)a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SOCKETPAIR:</span><br><span class="line">        err = sys_socketpair(a0, a1, a[2], (int __user *)a[3]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SEND:</span><br><span class="line">        err = sys_send(a0, (void __user *)a1, a[2], a[3]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SENDTO:</span><br><span class="line">        err = sys_sendto(a0, (void __user *)a1, a[2], a[3],</span><br><span class="line">                 (struct sockaddr __user *)a[4], a[5]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_RECV:</span><br><span class="line">        err = sys_recv(a0, (void __user *)a1, a[2], a[3]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_RECVFROM:</span><br><span class="line">        err = sys_recvfrom(a0, (void __user *)a1, a[2], a[3],</span><br><span class="line">                   (struct sockaddr __user *)a[4],</span><br><span class="line">                   (int __user *)a[5]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SHUTDOWN:</span><br><span class="line">        err = sys_shutdown(a0, a1);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SETSOCKOPT:</span><br><span class="line">        err = sys_setsockopt(a0, a1, a[2], (char __user *)a[3], a[4]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_GETSOCKOPT:</span><br><span class="line">        err =</span><br><span class="line">            sys_getsockopt(a0, a1, a[2], (char __user *)a[3],</span><br><span class="line">                   (int __user *)a[4]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_SENDMSG:</span><br><span class="line">        err = sys_sendmsg(a0, (struct msghdr __user *)a1, a[2]);</span><br><span class="line">        break;</span><br><span class="line">    case SYS_RECVMSG:</span><br><span class="line">        err = sys_recvmsg(a0, (struct msghdr __user *)a1, a[2]);</span><br><span class="line">        break;</span><br><span class="line">    default:</span><br><span class="line">        err = -EINVAL;</span><br><span class="line">        break;</span><br><span class="line">    &#125;</span><br><span class="line">    return err;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以先将这些操作码分类，先对用途简单了解一下，进而分析其实现过程。这些操作码大体上分为5类。</p>
+<h2 id="套接字的创建与删除"><a href="#套接字的创建与删除" class="headerlink" title="套接字的创建与删除"></a>套接字的创建与删除</h2><ul>
+<li>SYS_SOCKET：创建一个套接字，其用户调用接口为：<br><code>int socket(int domain, int type, int protocol);</code><br>这里的三个参数分别表示，网域、类型和协议。一般第三个参数为0，一般前两个参数确定后，所要使用的协议基本上就确定了，使用0表示默认由系统根据前两个参数来确定协议。在特殊的情况下才会需要指定具体的协议。套接字创建成功后返回一个正整数，表示打开的文件号。但这个文件号与一个代表套接字的数据结构相联系，而不是磁盘上具体的某个文件。</li>
+<li>SYS_BIND：将代表一个套接字的打开文件号与某一个域中的可寻址实体或者“套接字地址“相结合。在互联网中一般就是IP地址加端口号。其用户调用接口为：<br><code>int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);</code><br>这里的sockfd即为socket返回的文件号，在bind到某个地址或者文件名前，套接字是无法访问的。</li>
+<li>SYS_SOCKETPAIR：创建一对已经互相连接的无名套接字，有点类似于pipe()。用户调用接口为：<br><code>int socketpair(int domain, int type, int protocol, int sv[2]);</code><br>前三个参数与socket()相同，数组sv[]用来存放创建的一对打开的文件号。</li>
+<li>SYS_SHUTDOWN：部分或者完全关闭一个套接字，用户调用接口为：<br><code>int shutdown(int s, int how);</code><br>参数s表示打开的文件号，参数how为0表示不再允许接收，为1表示不再允许发送，为2表示接收和发送都不再允许。由于套接字体现为打开的特殊文件，所以也可以通过close()来关闭。</li>
+</ul>
+<h2 id="套接字连接的建立"><a href="#套接字连接的建立" class="headerlink" title="套接字连接的建立"></a>套接字连接的建立</h2><p>“有连接”模式通信双方是不对称的，通常称为C/S（Client/Server）模型，连接的建立需要经过一系列步骤，这个可以对照TCP连接三路握手来看。</p>
+<ul>
+<li>SYS_LISTEN：作为server的一端首先要通过listen()来向内核“注册”，只有向内核注册过的套接字才被允许接收来自于client端的连接请求。用户调用接口为：<br><code>int listen(int s, int backlog);</code><br>参数s为套接字的打开文件号，当连接请求到来时没有来得及处理，就暂时放在一个队列中等待server端接收，参数backlog就是这个队列的最大等待数。</li>
+<li>SYS_CONNECT：client通过connect()向server端发起连接请求。用户调用接口：<br><code>int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);</code><br>参数socked为client端创建的套接字对应的打开文件号，参数addr为要连接的目标server的地址信息，由于有些网域中的地址可能不固定长度，参数addrlen为地址信息结构体的长度。<br>调用connect()一般要到server端接受了连接或者出错才返回，在这之前会一直阻塞。</li>
+<li>SYS_ACCEPT：server端通过accept()接受或者等待接受到来的（或者已经在队列中的）第一个连接请求。用户调用接口为：<br><code>int accept(int sockfd, struct sockaddr *cliaddr, socklen_t *addrlen);</code><br>参数socked是server在内核注册过的套接字，即一个打开的文件号，参数cliaddr和addrlen用来返回连接请求的来源信息，即连接的client端的协议地址和地址长度。accept()调用要在有连接请求到来建立成功或者发生错误才返回。</li>
+</ul>
+<p>如果accept成功，返回值为内核自动生成的一个全新描述符，代表与所返回client端的TCP连接。而原来通过socket()创建的套接字保持不变，继续用来接收新的连接请求。为了表示区别，称socket()创建的套接字为监听套接字，accept()返回的套接字为已连接套接字。</p>
+<p>一个server通常仅仅创建一个监听套接字，它在server的整个生命周期中一直存在。内核为每个由server接收的客户连接创建一个已连接套接字。当server完成对某个给定client的服务时，相应的已连接套接字就被关闭。</p>
+<h2 id="“有连接”模式报文发送与接收"><a href="#“有连接”模式报文发送与接收" class="headerlink" title="“有连接”模式报文发送与接收"></a>“有连接”模式报文发送与接收</h2><p>这种模式需要在client和server双方建立起连接后才能进行通信，传输层对应的协议一般为TCP（STCP似乎也算）。由于套接字在用户的角度可以视作打开的文件，而且有连接模式的通信是可靠而且保持原有次序的，可以直接使用普通的read()和write()系统调用，如同读写普通文件一样接收和发送信息。也可以使用专门为套接字设计的三对库函数之一来接收和发送，它们分别是：recv()/send()、recvfrom()/sendto()和recvmsg()/sendmsg()。不过，这些库函数主要还是用于下文所提到的“无连接”模式。无论是“有连接”还是“无连接”模式，套接字都是双向的，在发送方和接收方来看，双方是对称的。</p>
+<p>“无连接”模式报文发送与接收<br>这种模式在收发数据前不需要建立连接，套接字创建完成就可以发送或者接收报文。另一方面，这种模式的通信不是可靠的，也不一定保持原有的报文次序，所以不宜使用read()/write()系统调用，需要用到上文提到的专门为套接字设计的三对库函数了。与read()/write()相比，三对库函数的特点是它们都保留了报文边界。</p>
+<p>SYS_SNEDTO：由于“无连接”模式不需要建立连接，所以在发送报文的时候必须指定目的地址。用户的调用接口为：<br><code>ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen);</code><br>很明显这就是为了“无连接”模式通信设计的，参数dest_addr为对端的地址，addrlen为地址长度。该函数也可以用于“有连接”模式的通信，此时需要将dest_addr置为NULL，addrlen置为0。</p>
+<p>在内核中，操作SYS_SENDTO是由sys_sendto()来实现的。</p>
+<p>SYS_SEND：从用户调用的角度来看，函数send()似乎是专为“有连接”模式设计的，其调用接口为：<br><code>ssize_t send(int sockfd, const void *buf, size_t len, int flags);</code><br>与sendto()相比，这里没有提供对端的地址，在“有连接”模式中，连接已经事先建立好，不需要每次都提供对端的地址。然而在“无连接”模式中，要是向同一目的地址发送多个报文，每次都要提供地址，又麻烦又降低效率（需要将用户空间的地址复制到内核中）；可以先预设一个地址，然后每次通过send()来发送，这样就不必每次指定地址；预设地址可以通过connect()来设置，然后通过send()发送报文，这样就可以节省开销。</p>
+<p>“无连接”和“有连接”两种模式下，使用connect()是有本质区别的。在“无连接”模式中，connect()的作用只是为了让内核为“本地”套接字预设下对端的地址，不会涉及到与对端之间控制报文的往返，每次发送报文的时候在头部添加对端地址就行了。“有连接”模式中，connect()实际向对端放松一个请求连接的控制报文，并等待对端响应；连接建立后，随同每个报文发送的可以只是一个连接号，不一定要包含对端的地址。</p>
+<p>在内核中SYS_SEND是由sys_send()实现的，而sys_send()又是通过调用sys_sendto()来实现的。<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">asmlinkage long sys_send(int fd, void __user *buff, size_t len, unsigned flags)</span><br><span class="line">&#123;</span><br><span class="line">    return sys_sendto(fd, buff, len, flags, NULL, 0);</span><br><span class="line">&#125;</span><br><span class="line">SYS_SENDMSG：这个函数是前两个函数的升级版，也是三个函数中最复杂的，其用户调用接口为：</span><br><span class="line">ssize_t sendmsg(int sockfd, const struct msghdr *msg, int flags);</span><br><span class="line"></span><br><span class="line">参数msg指向一个msghdr结构体，定义在include/linux/net.h中：</span><br><span class="line"></span><br><span class="line">struct msghdr &#123;</span><br><span class="line">    void    *    msg_name;    /* Socket name            */</span><br><span class="line">    int        msg_namelen;    /* Length of name        */</span><br><span class="line">    struct iovec *    msg_iov;    /* Data blocks            */</span><br><span class="line">    __kernel_size_t    msg_iovlen;    /* Number of blocks        */</span><br><span class="line">    void     *    msg_control;    /* Per protocol magic (eg BSD file descriptor passing) */</span><br><span class="line">    __kernel_size_t    msg_controllen;    /* Length of cmsg list */</span><br><span class="line">    unsigned    msg_flags;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>每个msghdr结构体都代表着一个报文。其中，msg_name为对方的套接字名称，其实就是对端的地址，msf_iov指向一个结构体数组，该数组中的每一个元素都是一块数据，这样就可以将一个报文的内容分散在若干个不连续的缓冲区中，在逻辑上又是连续的。msg_control和msg_controllen的作用是传递控制信息，在Unix中用来在进程间传递访问权限。</p>
+<p>由于每个报文都有对方的地址，显然适合“无连接”模式。在用于“有连接”模式时，需要将msg_name置为NULL，msg_namelen置为0。</p>
+<p>SYS_RECV、SYS_RECVFROM、SYS_RECVMSG：这三个操作与前面的三个操作是对应的，前面的是负责发送报文，这三个是负责接收报文。完成这些操作的用户调用接口为：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ssize_t recv(int sockfd, void *buf, size_t len, int flags);</span><br><span class="line">ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,</span><br><span class="line">                    struct sockaddr *src_addr, socklen_t *addrlen);</span><br><span class="line">ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags);</span><br></pre></td></tr></table></figure></p>
+<p>与发送报文的接口类似，recv()通常用于接收“有连接”模式的报文，或者是“无连接”模式，而之前通过connect()预设对端地址的报文；recvfrom()的接收是全方位的，参数from不是用来指定接收来自哪一个客户端的保护，而是在接收到报文之后指明报文的来源，所以from可以看作一个返回参数（用来存放返回值的缓冲区）。在内核中SYS_RECV由sys_recv()实现，SYS_RECVFROM则由sys_recvfrom()来实现。但是就如同sys_send()与sys_sendto()之间的关系一样，sys_recv()也是通过sys_recvfrom()实现的，代码见net/socket.c：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">asmlinkage long sys_recv(int fd, void __user *ubuf, size_t size,</span><br><span class="line">                                 unsigned flags)</span><br><span class="line">&#123;</span><br><span class="line">    return sys_recvfrom(fd, ubuf, size, flags, NULL, NULL);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>recvmsg()与sendmsg()相对应，也具有将一个报文分散在若干个缓冲区的功能，并具有接收控制信息的功能。</p>
+<h2 id="控制以及辅助性操作"><a href="#控制以及辅助性操作" class="headerlink" title="控制以及辅助性操作"></a>控制以及辅助性操作</h2><ul>
+<li>SYS_GETSOCKNAME：库函数getsockname()用来获取为一个套接字指定地址或名字:<br><code>int getsockname(int sockfd, struct sockaddr *addr, socklen_t *addrlen);</code></li>
+<li>SYS_GETPEERNAME：“有连接”模式的套接字，不论client还是server，一旦建立起来连接之后就有了一个“对端”，库函数getpeername()用来获取套接字s的对端地址或者名字：<br><code>int getpeername(int sockfd, struct sockaddr *addr, socklen_t *addrlen);</code></li>
+<li>SYS_SETSOCKOPT、SYS_GETSOCKOPT：库函数setsockopt()和getsockopt()用来设置和读取一个套接字s所对应的协议中一些可选项。<br>有了这些基础知识后，接下来尝试结合《Linux内核情景分析》中的内容与网络相关知识，针对网络连接的过程进行深入分析。</li>
+</ul>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"># Linux</a>
+          
+            <a href="/tags/Socket/" rel="tag"># Socket</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/11/25/hello-world/" rel="next" title="Hello World">
+                <i class="fa fa-chevron-left"></i> Hello World
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/11/25/Linux源码学习之socket通信2/" rel="prev" title="Linux源码学习之socket通信2">
+                Linux源码学习之socket通信2 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.png" alt="Bathingfox">
+            
+              <p class="site-author-name" itemprop="name">Bathingfox</p>
+              <p class="site-description motion-element" itemprop="description">我就是我，是颜色不一样的吃货！！！</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">categories</span>
+                  
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">tags</span>
+                  
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#写在前面"><span class="nav-number">1.</span> <span class="nav-text">写在前面</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#调用的起点"><span class="nav-number">2.</span> <span class="nav-text">调用的起点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#套接字的创建与删除"><span class="nav-number">3.</span> <span class="nav-text">套接字的创建与删除</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#套接字连接的建立"><span class="nav-number">4.</span> <span class="nav-text">套接字连接的建立</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#“有连接”模式报文发送与接收"><span class="nav-number">5.</span> <span class="nav-text">“有连接”模式报文发送与接收</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#控制以及辅助性操作"><span class="nav-number">6.</span> <span class="nav-text">控制以及辅助性操作</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Bathingfox</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.5.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.5.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.5.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.5.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.5.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.5.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

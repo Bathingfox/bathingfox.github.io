@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=6.5.0" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=6.5.0">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=6.5.0">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=6.5.0" color="#222">
+
+
+
+
+
+
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '6.5.0',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="系统调用接口—sys_socket()套接字的创建对应的操作码为SYS_SOCKET，对应的实现函数为sys_socket()，其代码在net/socket.c中：1234567891011121314151617asmlinkage long sys_socket(int family, int type, int protocol)&amp;#123;	int retval;	struct socke">
+<meta name="keywords" content="Linux,Socket">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux源码学习之socket通信2">
+<meta property="og:url" content="http://yoursite.com/2018/11/25/Linux源码学习之socket通信2/index.html">
+<meta property="og:site_name" content="爱洗澡的狐狸">
+<meta property="og:description" content="系统调用接口—sys_socket()套接字的创建对应的操作码为SYS_SOCKET，对应的实现函数为sys_socket()，其代码在net/socket.c中：1234567891011121314151617asmlinkage long sys_socket(int family, int type, int protocol)&amp;#123;	int retval;	struct socke">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/uploads/linuxsrc/socket_alloc.png">
+<meta property="og:updated_time" content="2018-11-27T14:31:23.223Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Linux源码学习之socket通信2">
+<meta name="twitter:description" content="系统调用接口—sys_socket()套接字的创建对应的操作码为SYS_SOCKET，对应的实现函数为sys_socket()，其代码在net/socket.c中：1234567891011121314151617asmlinkage long sys_socket(int family, int type, int protocol)&amp;#123;	int retval;	struct socke">
+<meta name="twitter:image" content="http://yoursite.com/uploads/linuxsrc/socket_alloc.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="爱洗澡的狐狸" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/11/25/Linux源码学习之socket通信2/">
+
+
+
+<script type="text/javascript" id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>Linux源码学习之socket通信2 | 爱洗澡的狐狸</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style type="text/css">
+    .use-motion .motion-element,
+    .use-motion .brand,
+    .use-motion .menu-item,
+    .sidebar-inner,
+    .use-motion .post-block,
+    .use-motion .pagination,
+    .use-motion .comments,
+    .use-motion .post-header,
+    .use-motion .post-body,
+    .use-motion .collection-title { opacity: initial; }
+
+    .use-motion .logo,
+    .use-motion .site-title,
+    .use-motion .site-subtitle {
+      opacity: initial;
+      top: initial;
+    }
+
+    .use-motion {
+      .logo-line-before i { left: initial; }
+      .logo-line-after i { right: initial; }
+    }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">爱洗澡的狐狸</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+
+      
+      
+    </ul>
+  
+
+  
+
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+            
+
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/11/25/Linux源码学习之socket通信2/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Bathingfox">
+      <meta itemprop="description" content="我就是我，是颜色不一样的吃货！！！">
+      <meta itemprop="image" content="/images/avatar.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="爱洗澡的狐狸">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Linux源码学习之socket通信2
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2018-11-25 22:00:41" itemprop="dateCreated datePublished" datetime="2018-11-25T22:00:41+08:00">2018-11-25</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">Edited on</span>
+                
+                <time title="Modified: 2018-11-27 22:31:23" itemprop="dateModified" datetime="2018-11-27T22:31:23+08:00">2018-11-27</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope="" itemtype="http://schema.org/Thing"><a href="/categories/专业笔记/" itemprop="url" rel="index"><span itemprop="name">专业笔记</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="系统调用接口—sys-socket"><a href="#系统调用接口—sys-socket" class="headerlink" title="系统调用接口—sys_socket()"></a>系统调用接口—sys_socket()</h2><p>套接字的创建对应的操作码为SYS_SOCKET，对应的实现函数为sys_socket()，其代码在net/socket.c中：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">asmlinkage <span class="keyword">long</span> <span class="title">sys_socket</span><span class="params">(<span class="keyword">int</span> family, <span class="keyword">int</span> type, <span class="keyword">int</span> protocol)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> retval;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">socket</span> *<span class="title">sock</span>;</span></span><br><span class="line">	retval = sock_create(family, type, protocol, &amp;sock);</span><br><span class="line">	<span class="keyword">if</span> (retval &lt; <span class="number">0</span>)</span><br><span class="line">		<span class="keyword">goto</span> out;</span><br><span class="line">	retval = sock_map_fd(sock);</span><br><span class="line">	<span class="keyword">if</span> (retval &lt; <span class="number">0</span>)</span><br><span class="line">		<span class="keyword">goto</span> out_release;</span><br><span class="line">out:</span><br><span class="line">	<span class="comment">/* It may be already another descriptor 8) Not kernel problem. */</span></span><br><span class="line">	<span class="keyword">return</span> retval;</span><br><span class="line">out_release:</span><br><span class="line">	sock_release(sock);</span><br><span class="line">	<span class="keyword">return</span> retval;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<a id="more"></a>
+<p>套接字对于用户程序而言就是打开的文件，内核中为套接字定义了一种特殊的文件类型，形成了一种特殊的文件系统sockfs，定义在net/socket.c中：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">vfsmount</span> *<span class="title">sock_mnt</span> __<span class="title">read_mostly</span>;</span></span><br><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_system_type</span> <span class="title">sock_fs_type</span> = &#123;</span></span><br><span class="line">	.name =		<span class="string">"sockfs"</span>,</span><br><span class="line">	.get_sb =	sockfs_get_sb,</span><br><span class="line">	.kill_sb =	kill_anon_super,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>在系统初始化时，要通过kern_mount()安装这个文件系统。安装时有个作为连接件的vfsmount数据结构，这个结构体的地址就保存在一个全局静态指针sock_mnt中。所以，我们所谓的创建一个套接字，就是在sockfs文件系统中创建一个特殊文件，也可以说是一个节点，并为之创建套接字功能所需要的一系列数据结构。</p>
+<p>值得一提的是上面在定义sock_mnt时，后面有跟一个关键词“__read_mostly”，该原语定义在include/asm-**/cache.h（**表示对应的CPU架构，此处为x86-64）中：<code>#define __read_mostly __attribute__((__section__(&quot;.data.read_mostly&quot;)))</code><br>我们可以将经常需要被读取的数据定义为__read_mostly类型，这样Linux内核被加载时，该数据将自动被存放到Cache中，以提高整个系统的执行效率。</p>
+<p>通过以上分析，然后就理解sys_socket()中其实做了两件事：1、通过函数sock_create()创建一个套接字结构体，并进行一些初始化；2、通过函数sock_map_fd()将创建的套接字结构体与一个文件结构体相关联（或者说将套接字结构“映射”为一个文件），这样最终就对其操作就可以如同操作文件一般。</p>
+<p>接下来可以分别看这两个函数的实现细节。</p>
+<h2 id="套接层的套接字创建—sock-create"><a href="#套接层的套接字创建—sock-create" class="headerlink" title="套接层的套接字创建—sock_create()"></a>套接层的套接字创建—sock_create()</h2><p>代码位置在net/socket.c，调用关系为sys_socketcall()-&gt;sys_socket()-&gt;sock_create()。</p>
+<p>实际上它调用的是函数__sock_create()：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sock_create</span><span class="params">(<span class="keyword">int</span> family, <span class="keyword">int</span> type, <span class="keyword">int</span> protocol, struct socket **res)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">return</span> __sock_create(family, type, protocol, res, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个函数也可以用来创建内核空间所使用的套接字，我们此处不需要管它。所以接下来详细看一下函数__sock_create()的详细内容，这段代码比较长，跳过前面的条件判断，然后再略掉一些错误处理之后来看。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> __sock_create(<span class="keyword">int</span> family, <span class="keyword">int</span> type, <span class="keyword">int</span> protocol,</span><br><span class="line">			 struct socket **res, <span class="keyword">int</span> kern)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">socket</span> *<span class="title">sock</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">net_proto_family</span> *<span class="title">pf</span>;</span></span><br><span class="line">	......</span><br><span class="line">	<span class="comment">/* Compatibility.</span></span><br><span class="line"><span class="comment">	   This uglymoron is moved from INET layer to here to avoid</span></span><br><span class="line"><span class="comment">	   deadlock in module load.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">if</span> (family == PF_INET &amp;&amp; type == SOCK_PACKET) &#123;</span><br><span class="line">		<span class="keyword">static</span> <span class="keyword">int</span> warned;</span><br><span class="line">		<span class="keyword">if</span> (!warned) &#123;</span><br><span class="line">			warned = <span class="number">1</span>;</span><br><span class="line">			printk(KERN_INFO <span class="string">"%s uses obsolete (PF_INET,SOCK_PACKET)\n"</span>,</span><br><span class="line">			       current-&gt;comm);</span><br><span class="line">		&#125;</span><br><span class="line">		family = PF_PACKET;</span><br><span class="line">	&#125;</span><br><span class="line">	security_socket_create(family, type, protocol, kern);</span><br><span class="line">	......	</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 *	Allocate the socket and allow the family to set things up. if</span></span><br><span class="line"><span class="comment">	 *	the protocol is 0, the family is instructed to select an appropriate</span></span><br><span class="line"><span class="comment">	 *	default.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	sock = sock_alloc();</span><br><span class="line">	......</span><br><span class="line">	sock-&gt;type = type;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">if</span> defined(CONFIG_KMOD)</span></span><br><span class="line">	<span class="comment">/* Attempt to load a protocol module if the find failed.</span></span><br><span class="line"><span class="comment">	 *</span></span><br><span class="line"><span class="comment">	 * 12/09/1996 Marcin: But! this makes REALLY only sense, if the user</span></span><br><span class="line"><span class="comment">	 * requested real, full-featured networking support upon configuration.</span></span><br><span class="line"><span class="comment">	 * Otherwise module support will break!</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">if</span> (net_families[family] == <span class="literal">NULL</span>)</span><br><span class="line">		request_module(<span class="string">"net-pf-%d"</span>, family);</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	rcu_read_lock();</span><br><span class="line">	pf = rcu_dereference(net_families[family]);</span><br><span class="line">	</span><br><span class="line">	......</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * We will call the -&gt;create function, that possibly is in a loadable</span></span><br><span class="line"><span class="comment">	 * module, so we have to bump that loadable module refcnt first.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	try_module_get(pf-&gt;owner);</span><br><span class="line">	<span class="comment">/* Now protected by module ref count */</span></span><br><span class="line">	rcu_read_unlock();</span><br><span class="line">	err = pf-&gt;create(sock, protocol);</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Now to bump the refcnt of the [loadable] module that owns this</span></span><br><span class="line"><span class="comment">	 * socket at sock_release time we decrement its refcnt.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	try_module_get(sock-&gt;ops-&gt;owner);</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Now that we're done with the -&gt;create function, the [loadable]</span></span><br><span class="line"><span class="comment">	 * module can have its refcnt decremented</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	module_put(pf-&gt;owner);</span><br><span class="line">	security_socket_post_create(sock, family, type, protocol, kern);</span><br><span class="line">	</span><br><span class="line">	*res = sock;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>我们略去了最开始的参数范围检查和处理，还有大部分的错误处理。</p>
+<p>首先会判断family参数是不是PF_INET，同时参数type是SOCK_PACKET，同时将family设置为PF_PACKET。不过这是一种过期的使用方式，为了兼容Linux 2.0，所以会在内核日志中打印一条信息，提示使用了过期的通信方式。这个可以忽略掉。</p>
+<blockquote>
+<p>AF_前缀表示地址族，PF_前缀表示协议族。历史上曾经有过一种想法：单个协议族可以支持多个地址族，PF_值用来创建套接字，而AF_值用于套接字地址结构。实际上，支持多个地址族的协议族从来没有实现过，而且头文件中为一给定的PF_值总是与此协议的AF_值相等。按照现存代码的风格，大部分都使用AF_值。</p>
+</blockquote>
+<blockquote>
+<p>两者都符合POSIX规范。</p>
+</blockquote>
+<p>接下来调用函数security_socket_create()，用来在创建新socket之前检查权限，并考虑协议集、类型、协议，以及socket是在内核中创建还是在用户空间中创建。这是SELinux安全框架的内容，在后面的补充内容中再进行讨论。如果系统不支持SELinux，那么该函数直接返回0，表示正常。</p>
+<p>然后调用函数sock_alloc()来为创建的套接字分配空间。具体是为所创建的套接字分配一个新的inode和套接字对象，并将两者绑定，如果成功就返回这个套接字。套接字是由socket数据结构代表的，该数据结构定义于include/linux/net.h中：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">socket</span> &#123;</span></span><br><span class="line">	socket_state		state;		<span class="comment">/* socket state (%SS_CONNECTED, etc) */</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span>		flags; 	<span class="comment">/* socket flags (%SOCK_ASYNC_NOSPACE, etc) */</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">proto_ops</span>	*<span class="title">ops</span>;</span>	<span class="comment">/* protocol specific socket operations */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">fasync_struct</span>	*<span class="title">fasync_list</span>;</span>	<span class="comment">/* Asynchronous wake up list */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">file</span>		*<span class="title">file</span>;</span>	<span class="comment">/* File back pointer for gc */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">sock</span>		*<span class="title">sk</span>;</span>	<span class="comment">/* internal networking protocol agnostic socket representation */</span></span><br><span class="line">	<span class="keyword">wait_queue_head_t</span>	wait;	<span class="comment">/* wait queue for several uses */</span></span><br><span class="line">	<span class="keyword">short</span>			type;	<span class="comment">/* socket type (%SOCK_STREAM, etc) */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>里面各部分的用途在后面遇到的时候才细究。</p>
+<p>然后是一段条件编译，如果系统配置了可动态安装内核模块的功能，并且网络驱动程序是动态安装的，那么就需要检查参数family所指定网域的驱动程序是否已经安装，若没有就需要调用request_module()把它安装起来。</p>
+<p>就像每种文件系统都有一个file_operations数据结构一样，每种网域，包括Unix域，也都有个net_proto_family数据结构。在系统初始化或安装模块时，要将指向相应网域的这个数据结构的指针填入一个数组net_families[]中，否则就说明系统尚不支持给定的网域。Unix域的net_proto_family数据结构为unix_family_ops，类似的互联网IPv4套接字对应的数据结构为inet_family_ops，代码位置在net/ipv4/af_inet.c。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">net_proto_family</span> <span class="title">inet_family_ops</span> = &#123;</span></span><br><span class="line">	.family = PF_INET,</span><br><span class="line">	.create = inet_create,</span><br><span class="line">	.owner	= THIS_MODULE,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>结构中只有一个代表着IPv4的常数PF_INET和一个函数指针inet_create，而PF_INET决定了指向这个数据结构的指针在net_families[]中的位置。</p>
+<p>接下来是一些关于RCU锁的部分，rcu_dereference()是一个宏，用于在RCU读端临界区获得一个RCU保护的指针，该指针可以在以后安全地引用。这里获得所对应的网域的net_proto_family数据结构，然后调用该数据结构中的create操作，对应的函数就是函数指针inet_create，来创建一个IPv4的套接字。创建成功后，结果存放在指针sock指向的内存。</p>
+<p>看完__sock_create()函数的逻辑，现在来细究其中所调用的函数细节，首先看sock_alloc()是如何为套接字分配空间，并进行相应的初始化，代码位置在net/socket.c，调用关系为sys_socketcall()-&gt;sys_socket()-&gt;sock_create()-&gt;__sock_create()-&gt;sock_alloc()。：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *	sock_alloc	-	allocate a socket</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *	Allocate a new inode and socket object. The two are bound together</span></span><br><span class="line"><span class="comment"> *	and initialised. The socket is then returned. If we are out of inodes</span></span><br><span class="line"><span class="comment"> *	NULL is returned.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> struct socket *<span class="title">sock_alloc</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">inode</span> *<span class="title">inode</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">socket</span> *<span class="title">sock</span>;</span></span><br><span class="line">	inode = new_inode(sock_mnt-&gt;mnt_sb);</span><br><span class="line">	<span class="keyword">if</span> (!inode)</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">	sock = SOCKET_I(inode);</span><br><span class="line">	inode-&gt;i_mode = S_IFSOCK | S_IRWXUGO;</span><br><span class="line">	inode-&gt;i_uid = current-&gt;fsuid;</span><br><span class="line">	inode-&gt;i_gid = current-&gt;fsgid;</span><br><span class="line">	get_cpu_var(sockets_in_use)++;</span><br><span class="line">	put_cpu_var(sockets_in_use);</span><br><span class="line">	<span class="keyword">return</span> sock;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>函数new_inode()在给定的超级块（superblock）创建一个inode，这里就是在sockfs文件系统sock_mnt上创建一个新的inode，取得一个inode是取得一个socket结构的必要条件。这一部分的逻辑在文件系统中，此处不再展开。</p>
+<p>在Linux2.4中实际上socket结构只是inode结构中的一部分，inode数据结构中又个关键字段u，它是一个联合体union，要按照文件类型和格式从而解释成为不同的数据结构，socket就是其中之一。Linux2.4一共支持20多种文件类型。在Linux2.6中不再按照对联合体union的不同解释来区分文件类型从而解释成为不同的数据结构，而只是一个单一的结构体，这意味着，所有文件系统中的inode都是统一的管理方法。</p>
+<p>那么如何将一个文件系统中的inode解释成为一个socket结构体呢？函数SOCK_I()就完成这个工作。代码位置在include/net/sock.h，调用关系sys_socketcall()-&gt;sys_socket()-&gt;sock_create()-&gt;__sock_create()-&gt;sock_alloc()-&gt;SOCK_I()<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">inline</span> struct socket *<span class="title">SOCKET_I</span><span class="params">(struct inode *inode)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;container_of(inode, struct socket_alloc, vfs_inode)-&gt;socket;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这里有一个非常有意思的小技巧，调用了一个宏container_of，这个宏定义的位置在include/linux/kernel.h，具体如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> container_of(ptr, type, member) (&#123;			\</span></span><br><span class="line">        <span class="function"><span class="keyword">const</span> <span class="title">typeof</span><span class="params">( ((type *)<span class="number">0</span>)-&gt;member )</span> *__mptr </span>= (ptr);	\</span><br><span class="line">        (type *)( (<span class="keyword">char</span> *)__mptr - offsetof(type,member) );&#125;)</span><br></pre></td></tr></table></figure></p>
+<p>这个宏用于从包含在某个结构体中的指针获得结构本身的指针，也就是说通过结构体中的某个成员的首地址从而获得整个结构体变量的首地址。它具体分为两步：</p>
+<ul>
+<li>获取一个临时的指针变量__mptr，其类型为指向type中的member成员的类型指针，将ptr的值赋给它；</li>
+<li>该指针变量__mptr，减去member在结构体中的偏移，就是整个结构体的首地址。这里又用到另一个宏<br><code>#define offsetof(TYPE, MEMBER) ((size_t) &amp;((TYPE *)0)-&gt;MEMBER)</code><br>它返回的就是成员MEMBER在TYPE中的偏移。具体是将0强制类型转化为TYPE指针，编译器认为0是一个有效地址，然后指向MEMBER成员，取址，就得到成员MEMBER的偏移了，因为这个TYPE结构体的地址是从0开始的。<br>回到函数SOCK_I()，它就是将刚才创建的inode赋给socket_alloc结构体的vfd_inode，返回整个socket_alloc的首地址，然后获取该结构体的socket成员地址。可以看一下socket_alloc结构体的内容，代码位置include/linux/sock.h：<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">socket_alloc</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">socket</span> <span class="title">socket</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">inode</span> <span class="title">vfs_inode</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<p>可以看到，最终文件系统中的inode与socket就是通过socket_alloc结构体关联在一起的。一种直观的感觉是：创建了inode之后，在这个结构体外部又包了一层，将inode整个放在一个socket_alloc结构体中。这里会同时创建一个socket结构体。如下图所示：</p>
+<center><br>    <img src="/uploads/linuxsrc/socket_alloc.png" width="40%" height="60%"><br></center>
+
+<p>尽管在inode创建的时候已经进行了一系列初始化工作，这里还需要针对套接字设置一些属性，i_mode设置为S_IFSOCK | S_IRWXUGO，前者表示这个inode对应的是一个套接字而非磁盘文件，后者表示该套接字的权限为全部可读可写可执行，即“777”。接下来两行针对Per-CPU变量sockets_in_use的操作，可以跳过不提。最后返回套接字指针，也就是结构体socket_alloc中的socket成员的地址。并将该套接字的类型指定为参数传进来的类型。<br>到目前为止，我们创建了文件系统的inode，并与一个套接字结构相关联，而该套接字的实际创建和初始化等工作待下文分析。暂且跳过创建套接字的细节，来看一下创建套接字成功之后，与文件描述符映射的细节，那么先让我们回到sys_socket()函数中，看一下创建套接字返回之后，接下来的函数sock_map_fd()。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">sock_map_fd</span><span class="params">(struct socket *sock)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">file</span> *<span class="title">newfile</span>;</span></span><br><span class="line">	<span class="keyword">int</span> fd = sock_alloc_fd(&amp;newfile);</span><br><span class="line">	<span class="keyword">if</span> (likely(fd &gt;= <span class="number">0</span>)) &#123;</span><br><span class="line">		<span class="keyword">int</span> err = sock_attach_fd(sock, newfile);</span><br><span class="line">		<span class="keyword">if</span> (unlikely(err &lt; <span class="number">0</span>)) &#123;</span><br><span class="line">			put_filp(newfile);</span><br><span class="line">			put_unused_fd(fd);</span><br><span class="line">			<span class="keyword">return</span> err;</span><br><span class="line">		&#125;</span><br><span class="line">		fd_install(fd, newfile);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> fd;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这个函数的逻辑看起来就很简单了，首先通过函数sock_alloc_fd()获取一个可用的文件描述符fd，并创建一个文件结构file。回到sock_map_fd()，需要将newfile指向的新文件结构和所创建的套接字sock相关联，回想前面展示的socket结构中有一个字段是file，这里就是对file的一些字段进行初始化，包括设置文件的名称、所在目录路径、文件权限和操作接口等信息，之前创建的inode信息也要加入到这个file结构中，同时将socket字段中的file字段指向这个新的文件结构。最后将文件与文件描述符相关联，并将对应的描述符载入到当前进程的文件描述符数组中。</p>
+<h2 id="内核套接字的创建—inet-create"><a href="#内核套接字的创建—inet-create" class="headerlink" title="内核套接字的创建—inet_create()"></a>内核套接字的创建—inet_create()</h2><p>回忆前面所提到的通过rcu_dereference获取参数family对应的网域的net_proto_family数据结构，然后调用其中的create函数来创建对应网域的套接字。前文已经提到过，实际上调用的是net/ipv4/af_inet.c中的inet_create()函数。下面就来详细分析该函数的逻辑，函数体比较长，分段来看。<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">inet_create</span><span class="params">(struct socket *sock, <span class="keyword">int</span> protocol)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	......</span><br><span class="line">	sock-&gt;state = SS_UNCONNECTED;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">/* Look for the requested type/protocol pair. */</span></span><br><span class="line">	answer = <span class="literal">NULL</span>;</span><br><span class="line">lookup_protocol:</span><br><span class="line">	err = -ESOCKTNOSUPPORT;</span><br><span class="line">	rcu_read_lock();</span><br><span class="line">	list_for_each_rcu(p, &amp;inetsw[sock-&gt;type]) &#123;</span><br><span class="line">		answer = list_entry(p, struct inet_protosw, <span class="built_in">list</span>);</span><br><span class="line">		<span class="comment">/* Check the non-wild match. */</span></span><br><span class="line">		<span class="keyword">if</span> (protocol == answer-&gt;protocol) &#123;</span><br><span class="line">			<span class="keyword">if</span> (protocol != IPPROTO_IP)</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			<span class="comment">/* Check for the two wild cases. */</span></span><br><span class="line">			<span class="keyword">if</span> (IPPROTO_IP == protocol) &#123;</span><br><span class="line">				protocol = answer-&gt;protocol;</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span> (IPPROTO_IP == answer-&gt;protocol)</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		err = -EPROTONOSUPPORT;</span><br><span class="line">		answer = <span class="literal">NULL</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (unlikely(answer == <span class="literal">NULL</span>)) &#123;</span><br><span class="line">		<span class="keyword">if</span> (try_loading_module &lt; <span class="number">2</span>) &#123;</span><br><span class="line">			rcu_read_unlock();</span><br><span class="line">			<span class="comment">/*</span></span><br><span class="line"><span class="comment">			 * Be more specific, e.g. net-pf-2-proto-132-type-1</span></span><br><span class="line"><span class="comment">			 * (net-pf-PF_INET-proto-IPPROTO_SCTP-type-SOCK_STREAM)</span></span><br><span class="line"><span class="comment">			 */</span></span><br><span class="line">			<span class="keyword">if</span> (++try_loading_module == <span class="number">1</span>)</span><br><span class="line">				request_module(<span class="string">"net-pf-%d-proto-%d-type-%d"</span>,</span><br><span class="line">					       PF_INET, protocol, sock-&gt;type);</span><br><span class="line">			<span class="comment">/*</span></span><br><span class="line"><span class="comment">			 * Fall back to generic, e.g. net-pf-2-proto-132</span></span><br><span class="line"><span class="comment">			 * (net-pf-PF_INET-proto-IPPROTO_SCTP)</span></span><br><span class="line"><span class="comment">			 */</span></span><br><span class="line">			<span class="keyword">else</span></span><br><span class="line">				request_module(<span class="string">"net-pf-%d-proto-%d"</span>,</span><br><span class="line">					       PF_INET, protocol);</span><br><span class="line">			<span class="keyword">goto</span> lookup_protocol;</span><br><span class="line">		&#125; <span class="keyword">else</span></span><br><span class="line">			<span class="keyword">goto</span> out_rcu_unlock;</span><br><span class="line">	&#125;</span><br><span class="line">	</span><br><span class="line">	......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>函数的参数sock即上文创建的套接字结构，参数protocol是从用户空间一直传下来的。开始跳过了一些变量的声明，套接字的初始状态设置成SS_UNCONNECTED，表示“无连接”。“有连接”模式，即类型为SOCK_STREAM的套接字必须在连接建立成功以后才能使用。</p>
+<p>套接字的类型决定了通信的模式，对于给定的网域这通常也决定了采用的协议。所以用户空间通常对于参数protocol置为0，表示由内核根据类型来决定协议。</p>
+<p>接下来是寻找所要求的套接字类型与对应协议的配对。在数组inetsw中找到所需要创建的套接字类型所对应的项，inetsw保存的是每个协议type对应的属性和操作，这些包含了创建套接字所需要的所有信息，在INET模块初始化的过程中会将数组inetsw_array这个数组中的元素全部插入到inetsw。看一下inetsw_array里都有哪些项，代码位置在net/ipv4/af_inet.c：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">inet_protosw</span> <span class="title">inetsw_array</span>[] =</span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">        &#123;</span><br><span class="line">                .type =       SOCK_STREAM,</span><br><span class="line">                .protocol =   IPPROTO_TCP,</span><br><span class="line">                .prot =       &amp;tcp_prot,</span><br><span class="line">                .ops =        &amp;inet_stream_ops,</span><br><span class="line">                .capability = <span class="number">-1</span>,</span><br><span class="line">                .no_check =   <span class="number">0</span>,</span><br><span class="line">                .flags =      INET_PROTOSW_PERMANENT |</span><br><span class="line">			      INET_PROTOSW_ICSK,</span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">                .type =       SOCK_DGRAM,</span><br><span class="line">                .protocol =   IPPROTO_UDP,</span><br><span class="line">                .prot =       &amp;udp_prot,</span><br><span class="line">                .ops =        &amp;inet_dgram_ops,</span><br><span class="line">                .capability = <span class="number">-1</span>,</span><br><span class="line">                .no_check =   UDP_CSUM_DEFAULT,</span><br><span class="line">                .flags =      INET_PROTOSW_PERMANENT,</span><br><span class="line">       &#125;,</span><br><span class="line">        </span><br><span class="line">       &#123;</span><br><span class="line">               .type =       SOCK_RAW,</span><br><span class="line">               .protocol =   IPPROTO_IP,	<span class="comment">/* wild card */</span></span><br><span class="line">               .prot =       &amp;raw_prot,</span><br><span class="line">               .ops =        &amp;inet_sockraw_ops,</span><br><span class="line">               .capability = CAP_NET_RAW,</span><br><span class="line">               .no_check =   UDP_CSUM_DEFAULT,</span><br><span class="line">               .flags =      INET_PROTOSW_REUSE,</span><br><span class="line">       &#125;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>可以看出来该数组包含了三个项，分别对应不同的通信类型及其对应的各种信息：协议、操作接口和标记等。</p>
+<p>然后将该元素对应的结构体的地址保存到一个临时指针answer，它所指向的结构体为也是inet_protosw，与前面的inetsw_array数组一样。该结构体定义的位置在/include/net/protocol.h，代码如下：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* This is used to register socket interfaces for IP protocols.  */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inet_protosw</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span></span><br><span class="line">        <span class="comment">/* These two fields form the lookup key.  */</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">short</span>	 type;	   <span class="comment">/* This is the 2nd argument to socket(2). */</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">short</span>	 protocol; <span class="comment">/* This is the L4 protocol number.  */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">proto</span>	 *<span class="title">prot</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">proto_ops</span> *<span class="title">ops</span>;</span></span><br><span class="line">  </span><br><span class="line">	<span class="keyword">int</span>         	capability; 	<span class="comment">/* Which (if any) capability do</span></span><br><span class="line"><span class="comment">				      				 * we need to use this socket</span></span><br><span class="line"><span class="comment">				      				 * interface?</span></span><br><span class="line"><span class="comment">                                     */</span></span><br><span class="line">	<span class="keyword">char</span>             no_check;   <span class="comment">/* checksum on rcv/xmit/none? */</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">char</span>	 flags;      <span class="comment">/* See INET_PROTOSW_* below.  */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>循环检查数据inetsw中的每一项，检查参数中的protocol是否与某一项的protocol字段一样，或者检查参数中或answer中的protocol是否为IPPROTO_IP，IPPROTO_IP的值就是0，就是表示由内核根据网域族（family）和通信类型（type）来自动选择相应的协议。这里值得一提的是当指定通信类型为SOCK_RAW时，不能使用默认协议，因为这种情况下，内核无法自动选择相应协议。</p>
+<p>下面有一段对answer判断的逻辑，如果没有在数据inetsw中找到type对应的元素，那么需要尝试动态加载相应的协议类型模块，因为有两种命名方式，先尝试具体的，若不成功再尝试另一种，最大尝试次数也就是2。</p>
+<p>这里可以看到一个宏unlikely，与它对应的还有一个likely，定义的位置在include/linux/compiler.h：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> likely(x)	__builtin_expect(!!(x), 1)</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> unlikely(x)	__builtin_expect(!!(x), 0)</span></span><br></pre></td></tr></table></figure></p>
+<p>它们是编译器内置选项，表示所判断的条件可能性是大是小。通过这种方式，编译器在编译过程中，会将可能性更大的代码紧跟着后面的代码，从而减少指令跳转带来的性能上的下降。cache在预取数据时就可以将可能性大的进制代码拿到cache中，从而也就提高了cache的命中率。</p>
+<p>找到inetsw中type对应的元素之后，接下来将其中的一些属性值赋给临时变量备用，下面的主要是一些套接字操作接口：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sock-&gt;ops = answer-&gt;ops;</span><br><span class="line">answer_prot = answer-&gt;prot;</span><br><span class="line">answer_no_check = answer-&gt;no_check;</span><br><span class="line">answer_flags = answer-&gt;flags;</span><br></pre></td></tr></table></figure></p>
+<p>这里涉及到inet_protosw中的两个字段：struct proto <em>prot和const struct proto_ops </em>ops，两个结构里面都定义了大量的同名函数指针，函数参数略有不同，以bind()函数为例：</p>
+<p>结构体struct proto_ops中的定义如下，<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span>		(*bind)	     (struct socket *sock,</span><br><span class="line">			      struct sockaddr *myaddr,</span><br><span class="line">			      <span class="keyword">int</span> sockaddr_len);</span><br><span class="line">```                  </span><br><span class="line">而结构体<span class="class"><span class="keyword">struct</span> <span class="title">proto</span>中的定义如下，</span></span><br><span class="line"><span class="class">```<span class="title">c</span></span></span><br><span class="line"><span class="class"><span class="title">int</span>			(*<span class="title">bind</span>)(<span class="title">struct</span> <span class="title">sock</span> *<span class="title">sk</span>, </span></span><br><span class="line"><span class="class">				<span class="title">struct</span> <span class="title">sockaddr</span> *<span class="title">uaddr</span>, <span class="title">int</span> <span class="title">addr_len</span>);</span></span><br></pre></td></tr></table></figure></p>
+<p>两种定义的区别在于第一个参数，而正是从这个参数的区别中我们可以看出它们两者在应用范围上的不同。前者使用struct socket作为参数而后者使用struct sock作为参数，这说明前者主要是面向socket layer的接口，而后者则是内核协议栈具体实现中的接口。</p>
+<p>再往下看：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">sk = sk_alloc(PF_INET, GFP_KERNEL, answer_prot, <span class="number">1</span>);</span><br><span class="line">......</span><br><span class="line">sk-&gt;sk_no_check = answer_no_check;</span><br><span class="line"><span class="keyword">if</span> (INET_PROTOSW_REUSE &amp; answer_flags)</span><br><span class="line">	sk-&gt;sk_reuse = <span class="number">1</span>;</span><br><span class="line">```    </span><br><span class="line">创建一个sock结构的套接字，这个结构也是前半部分中提到的socket结构体的核心部分。这个结构体的内容太长，暂且略过，根据创建函数来分析其中一些字段的用处，代码位置在net/core/sock.c：</span><br><span class="line">```c</span><br><span class="line"><span class="function">struct sock *<span class="title">sk_alloc</span><span class="params">(<span class="keyword">int</span> family, <span class="keyword">gfp_t</span> priority,</span></span></span><br><span class="line"><span class="function"><span class="params">		      struct proto *prot, <span class="keyword">int</span> zero_it)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span> = <span class="title">NULL</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">kmem_cache</span> *<span class="title">slab</span> = <span class="title">prot</span>-&gt;<span class="title">slab</span>;</span></span><br><span class="line">	<span class="keyword">if</span> (slab != <span class="literal">NULL</span>)</span><br><span class="line">		sk = kmem_cache_alloc(slab, priority);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		sk = kmalloc(prot-&gt;obj_size, priority);</span><br><span class="line">	<span class="keyword">if</span> (sk) &#123;</span><br><span class="line">		<span class="keyword">if</span> (zero_it) &#123;</span><br><span class="line">			<span class="built_in">memset</span>(sk, <span class="number">0</span>, prot-&gt;obj_size);</span><br><span class="line">			sk-&gt;sk_family = family;</span><br><span class="line">			sk-&gt;sk_prot = sk-&gt;sk_prot_creator = prot;</span><br><span class="line">			sock_lock_init(sk);</span><br><span class="line">		&#125;</span><br><span class="line">		</span><br><span class="line">		security_sk_alloc(sk, family, priority);</span><br><span class="line">		try_module_get(prot-&gt;owner);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> sk;</span><br><span class="line">	......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>逻辑很清楚，就是在内核中分配空间，如果可能分配在cache中，设置好优先级，根据需要（实际上是需要的）对分配的空间进行初始化，然后设置一些字段的值，sk_family置为参数family，表示网域信息；sk_prot和sk_prot_creator，根据注释，前者指向的是协议句柄，后者指向的是原始套接字的协议句柄，实际上就是一堆套接字操作相关的函数指针。</p>
+<p>分配好空间，设置好操作的函数集合后，回到inet_create()，再设置一下sk的sk_no_check字段，表示是否需要检查数据包。INET_PROTOSW_REUSE表示是否允许端口复用。下面是函数inet_create()剩下的内容：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">	inet = inet_sk(sk);</span><br><span class="line">	inet-&gt;is_icsk = (INET_PROTOSW_ICSK &amp; answer_flags) != <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">if</span> (SOCK_RAW == sock-&gt;type) &#123;</span><br><span class="line">		inet-&gt;num = protocol;</span><br><span class="line">		<span class="keyword">if</span> (IPPROTO_RAW == protocol)</span><br><span class="line">			inet-&gt;hdrincl = <span class="number">1</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (ipv4_config.no_pmtu_disc)</span><br><span class="line">		inet-&gt;pmtudisc = IP_PMTUDISC_DONT;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		inet-&gt;pmtudisc = IP_PMTUDISC_WANT;</span><br><span class="line">	inet-&gt;id = <span class="number">0</span>;</span><br><span class="line">	sock_init_data(sock, sk);</span><br><span class="line">	sk-&gt;sk_destruct	   = inet_sock_destruct;</span><br><span class="line">	sk-&gt;sk_family	   = PF_INET;</span><br><span class="line">	sk-&gt;sk_protocol	   = protocol;</span><br><span class="line">	sk-&gt;sk_backlog_rcv = sk-&gt;sk_prot-&gt;backlog_rcv;</span><br><span class="line">	inet-&gt;uc_ttl	= <span class="number">-1</span>;</span><br><span class="line">	inet-&gt;mc_loop	= <span class="number">1</span>;</span><br><span class="line">	inet-&gt;mc_ttl	= <span class="number">1</span>;</span><br><span class="line">	inet-&gt;mc_index	= <span class="number">0</span>;</span><br><span class="line">	inet-&gt;mc_list	= <span class="literal">NULL</span>;</span><br><span class="line">	sk_refcnt_debug_inc(sk);</span><br><span class="line">	<span class="keyword">if</span> (inet-&gt;num) &#123;</span><br><span class="line">		<span class="comment">/* It assumes that any protocol which allows</span></span><br><span class="line"><span class="comment">		 * the user to assign a number at socket</span></span><br><span class="line"><span class="comment">		 * creation time automatically</span></span><br><span class="line"><span class="comment">		 * shares.</span></span><br><span class="line"><span class="comment">		 */</span></span><br><span class="line">		inet-&gt;sport = htons(inet-&gt;num);</span><br><span class="line">		<span class="comment">/* Add to protocol hash chains. */</span></span><br><span class="line">		sk-&gt;sk_prot-&gt;hash(sk);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (sk-&gt;sk_prot-&gt;init) &#123;</span><br><span class="line">		err = sk-&gt;sk_prot-&gt;init(sk);</span><br><span class="line">		<span class="keyword">if</span> (err)</span><br><span class="line">			sk_common_release(sk);</span><br><span class="line">	&#125;</span><br><span class="line">out:</span><br><span class="line">	<span class="keyword">return</span> err;</span><br></pre></td></tr></table></figure></p>
+<p>将sock结构体指针sk强制类型转换为inet_sock结构体指针，实际上inet_sock结构体的第一个字段就是sock结构体。INET_PROTOSW_ICSK表示是否是互联网连接。然后判断是否为原始套接字类型SOCK_RAW，如果是将hdrincl字段置为1，表示需要自己构建IP数据报头。</p>
+<p>再看是否配置最大传输单元（MTU），并将pmtudisc字段置位，IP_PMTUDISC_DONT和IP_PMTUDISC_WANT分别表示不允许数据包分片和允许分片。id表示分段包的序号，这里首先置为0。再通过函数sock_init_data()初始化sock结构体sk的其他大部分字段，并将sk赋给上面创建的socket结构体指针sock对应的sk字段，返回后设置inet的相关字段值。这些字段的意义可以参考结构体的注释，还是很详细的。</p>
+<p>其实从前面的代码中可以看到，每个套接字都有个socket数据结构，同时又有一个sock数据结构，后者可以说是前面一种的扩充，两者之间也是一对一的关系。在socket结构体中又个指针sk指向对应的sock结构。sock结构通常需要内核动态分配使用，所以内核专门为此设置里一个队列，通过slab机制来管理这种数据结构的缓冲区。</p>
+<p>最后通过相应的协议来再对sock结构sk在内核协议栈中进行初始化，比如TCP协议的话，对应的内核操作接口集合为tcp_prot(参考上面的inetsw_array数组)，对应的初始化函数就是：tcp_v4_init_sock()。</p>
+<h2 id="TCP层的初始化—tcp-v4-init-sock"><a href="#TCP层的初始化—tcp-v4-init-sock" class="headerlink" title="TCP层的初始化—tcp_v4_init_sock()"></a>TCP层的初始化—tcp_v4_init_sock()</h2><p>首先看一下这个函数的完整代码：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">tcp_v4_init_sock</span><span class="params">(struct sock *sk)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">inet_connection_sock</span> *<span class="title">icsk</span> = <span class="title">inet_csk</span>(<span class="title">sk</span>);</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">tcp_sock</span> *<span class="title">tp</span> = <span class="title">tcp_sk</span>(<span class="title">sk</span>);</span></span><br><span class="line">	skb_queue_head_init(&amp;tp-&gt;out_of_order_queue);</span><br><span class="line">	tcp_init_xmit_timers(sk);</span><br><span class="line">	tcp_prequeue_init(tp);</span><br><span class="line">	icsk-&gt;icsk_rto = TCP_TIMEOUT_INIT;</span><br><span class="line">	tp-&gt;mdev = TCP_TIMEOUT_INIT;</span><br><span class="line">	<span class="comment">/* So many TCP implementations out there (incorrectly) count the</span></span><br><span class="line"><span class="comment">	 * initial SYN frame in their delayed-ACK and congestion control</span></span><br><span class="line"><span class="comment">	 * algorithms that we must have the following bandaid to talk</span></span><br><span class="line"><span class="comment">	 * efficiently to them.  -DaveM</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	tp-&gt;snd_cwnd = <span class="number">2</span>;</span><br><span class="line">	<span class="comment">/* See draft-stevens-tcpca-spec-01 for discussion of the</span></span><br><span class="line"><span class="comment">	 * initialization of these values.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	tp-&gt;snd_ssthresh = <span class="number">0x7fffffff</span>;	<span class="comment">/* Infinity */</span></span><br><span class="line">	tp-&gt;snd_cwnd_clamp = ~<span class="number">0</span>;</span><br><span class="line">	tp-&gt;mss_cache = <span class="number">536</span>;</span><br><span class="line">	tp-&gt;reordering = sysctl_tcp_reordering;</span><br><span class="line">	icsk-&gt;icsk_ca_ops = &amp;tcp_init_congestion_ops;</span><br><span class="line">	sk-&gt;sk_state = TCP_CLOSE;</span><br><span class="line">	sk-&gt;sk_write_space = sk_stream_write_space;</span><br><span class="line">	sock_set_flag(sk, SOCK_USE_WRITE_QUEUE);</span><br><span class="line">	icsk-&gt;icsk_af_ops = &amp;ipv4_specific;</span><br><span class="line">	icsk-&gt;icsk_sync_mss = tcp_sync_mss;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">ifdef</span> CONFIG_TCP_MD5SIG</span></span><br><span class="line">	tp-&gt;af_specific = &amp;tcp_sock_ipv4_specific;</span><br><span class="line"><span class="meta">#<span class="meta-keyword">endif</span></span></span><br><span class="line">	sk-&gt;sk_sndbuf = sysctl_tcp_wmem[<span class="number">1</span>];</span><br><span class="line">	sk-&gt;sk_rcvbuf = sysctl_tcp_rmem[<span class="number">1</span>];</span><br><span class="line">	atomic_inc(&amp;tcp_sockets_allocated);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>这一步比较简单，继续对套接字结构体的各个字段进行初始化。传入的参数是上文已经创建好的struct sock结构体指针sk，然后对它进行两次类型转换，首先将它转成struct inet_connection_sock结构类型的指针，这个结构体的第一个字段是truct inet_sock结构体，而该结构体的第一个字段就是struct sock结构体，所以等于还是在struct sock结构体外部包了一层或者多层，增加了一些属性字段，并进行初始化赋值。struct tcp_sock结构体实际上又是在struct inet_connection_sock外包了一层，所以其实icsk和tp两个指针指向的是同一个位置。</p>
+<p>这两个结构体的内容都很长，可以参考源码中的对它们的注释去了解每个字段的作用，现在就代码中出现的各个字段进行说明。</p>
+<p>tcp_sock要维护一个失序的队列，首先要对其进行初始化操作。初始化一个自旋锁，将列表的前后继都指向自己，初始长度置为0。接下来初始化三个计时器，tcp_write_timer，tcp_delack_timer，tcp_keepalive_timer，分别对应重传计时器、ACK延迟计时器和保活计时器，具体作用可以参考TCP的相关说明。</p>
+<p>调用tcp_prequeue_init()继续对tp进行初始化，该函数主要对struct tcp_sock的ucopy字段进行设置，这个字段用来复制数据到用户进程的控制块，包括描述用户空间缓存及其长度，prequeue队列及其占用的内存等。prequeue是一个struct sk_buff的队列，struct sk_buff是协议栈各层之间传递数据的主要载体。 task是struct task_struct的变量，这个变量类型是OS调度进程的变量类型，也证明内核是通过进程调试方式来把数据传递给用户层。</p>
+<p>回到函数tcp_v4_init_sock()。icsk-&gt;icsk_rto表示超时重传的时间，现在初始化为TCP_TIMEOUT_INIT，这个宏的实际值为3*HZ，HZ表示了1s内CPU产生的计时软中断次数，所以实际上也就是3s。tp-&gt;mdev表示RTT平均偏差，现在也初始化为3s。tp-&gt;snd_cwnd表示当前拥塞窗口大小，初始化为2。tp-&gt;snd_ssthresh表示拥塞控制时慢启动的阈值，现在初始化为无穷大。tp-&gt;snd_cwnd_clamp表示自从上次调整拥塞窗口到目前为止接收到的总ACK数，现在初始化为~0，由于其类型是个unsigned int，所以也可以认为是一个极大的值。tp-&gt;mss_cache表示发送方当前有效MSS，初始化为536字节。</p>
+<p>tp-&gt;reordering的作用：在不支持SACK时，为由于连接收到重复确认而进入快速恢复阶段的重复确认数阈值；在支持SACK时，在没有确定丢失包的情况下，是TCP流中可以重排序的数据段数。现在进行初始化的右值还不明确具体值，似乎是个函数符号。</p>
+<p>icsk-&gt;icsk_ca_ops是一系列用于进行拥塞控制的函数钩子。可以看一下为它赋的函数集合tcp_init_congestion_ops都是什么内容：<br><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">tcp_congestion_ops</span> <span class="title">tcp_init_congestion_ops</span>  = &#123;</span></span><br><span class="line">	.name		= <span class="string">""</span>,</span><br><span class="line">	.owner		= THIS_MODULE,</span><br><span class="line">	.ssthresh	= tcp_reno_ssthresh,</span><br><span class="line">	.cong_avoid	= tcp_reno_cong_avoid,</span><br><span class="line">	.min_cwnd	= tcp_reno_min_cwnd,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure></p>
+<p>sk-&gt;sk_state设置TCP连接的状态是TCP_CLOSE，因为socket的创建流程还没有进行完毕。icsk-&gt;icsk_af_ops表示针对协议类型的操作集合（IPv4或者IPv6），这里赋值为IPv4的操作集合。icsk-&gt;icsk_sync_mss用来在连接建立时同步MSS。sk-&gt;sk_sndbuf和sk-&gt;sk_rcvbuf分别表示sk发送缓冲区和接收缓冲区的大小。最后atomic_inc(&amp;tcp_sockets_allocated)增加系统维护的已经分配TCP socket的个数。</p>
+<p>至此，整个套接字创建过程才算是彻底结束。</p>
+<h2 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h2><p>套接字创建成功会与一个文件结构相关联，并有对应的文件描述符。<br>套接字的创建主要分为两个阶段：套接字层和内核协议栈，两者一一对应。<br>对套接字的操作最终都会通过tcp_prot和inet_stream_ops中的函数来完成。<br>也可以通过文件操作接口对套接字进行操作。</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><ol>
+<li><p>SELinux: <a href="https://www.ibm.com/developerworks/cn/linux/l-selinux/" target="_blank" rel="noopener">https://www.ibm.com/developerworks/cn/linux/l-selinux/</a></p>
+</li>
+<li><p>RCU Lock: <a href="https://www.ibm.com/developerworks/cn/linux/l-rcu/index.html" target="_blank" rel="noopener">https://www.ibm.com/developerworks/cn/linux/l-rcu/index.html</a></p>
+</li>
+<li><p>container_of: <a href="http://radek.io/2012/11/10/magical-container_of-macro/" target="_blank" rel="noopener">http://radek.io/2012/11/10/magical-container_of-macro/</a></p>
+</li>
+<li><p>Per CPU: <a href="http://nanxiao.me/linux-kernel-note-21-per-cpu-variable/" target="_blank" rel="noopener">http://nanxiao.me/linux-kernel-note-21-per-cpu-variable/</a></p>
+</li>
+<li><p>Implementation of Sockets: <a href="http://perthcharles.github.io/2014/10/23/tcp-design-and-implementation-3/" target="_blank" rel="noopener">http://perthcharles.github.io/2014/10/23/tcp-design-and-implementation-3/</a></p>
+</li>
+<li><p>Linux 3.5.3 inet_create(): <a href="http://blog.csdn.net/longxj04/article/details/7993474" target="_blank" rel="noopener">http://blog.csdn.net/longxj04/article/details/7993474</a></p>
+</li>
+<li><p>socket API implementation: <a href="http://blog.guorongfei.com/2014/10/23/socket-create/" target="_blank" rel="noopener">http://blog.guorongfei.com/2014/10/23/socket-create/</a></p>
+</li>
+</ol>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+       
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"># Linux</a>
+          
+            <a href="/tags/Socket/" rel="tag"># Socket</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/11/25/Linux源码学习之socket通信1/" rel="next" title="Linux源码学习之socket通信1">
+                <i class="fa fa-chevron-left"></i> Linux源码学习之socket通信1
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/11/29/Linux源码学习之socket通信3/" rel="prev" title="Linux源码学习之socket通信3">
+                Linux源码学习之socket通信3 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.png" alt="Bathingfox">
+            
+              <p class="site-author-name" itemprop="name">Bathingfox</p>
+              <p class="site-description motion-element" itemprop="description">我就是我，是颜色不一样的吃货！！！</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">8</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  
+                    
+                    
+                      
+                    
+                    <span class="site-state-item-count">1</span>
+                    <span class="site-state-item-name">categories</span>
+                  
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  
+                    
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">2</span>
+                    <span class="site-state-item-name">tags</span>
+                  
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+
+          
+
+          
+          
+
+          
+            
+          
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#系统调用接口—sys-socket"><span class="nav-number">1.</span> <span class="nav-text">系统调用接口—sys_socket()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#套接层的套接字创建—sock-create"><span class="nav-number">2.</span> <span class="nav-text">套接层的套接字创建—sock_create()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#内核套接字的创建—inet-create"><span class="nav-number">3.</span> <span class="nav-text">内核套接字的创建—inet_create()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TCP层的初始化—tcp-v4-init-sock"><span class="nav-number">4.</span> <span class="nav-text">TCP层的初始化—tcp_v4_init_sock()</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#小结"><span class="nav-number">5.</span> <span class="nav-text">小结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">6.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Bathingfox</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Pisces</a> v6.5.0</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+	
+    
+
+    
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=6.5.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=6.5.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=6.5.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=6.5.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=6.5.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=6.5.0"></script>
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
